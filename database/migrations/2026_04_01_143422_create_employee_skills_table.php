@@ -18,7 +18,7 @@ return new class extends Migration
         $table->foreignId('skill_id')->constrained()->restrictOnDelete();
 
         $table->float('rating');
-
+        $table->unique(['employee_id', 'skill_id']);
         $table->timestamps();
     });
     }
