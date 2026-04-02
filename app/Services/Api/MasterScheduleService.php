@@ -2,10 +2,14 @@
 
 namespace App\Services\Api;
 
+use App\Models\Employee;
 use App\Models\MasterSchedule;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
+use App\Models\DayOff;
+use App\Models\Availability;
+
 class MasterScheduleService
 {
     public function getAllPaginated(int $perPage = 10)
@@ -30,6 +34,12 @@ class MasterScheduleService
                 $data['end_date']
             );
 
+            $this->validateEmployeesBelongToStore(
+                $data['schedules'],
+                $data['store_id']
+            );
+            $this->validateEmployeeNotOnDayOff($data['schedules']);
+            $this->validateEmployeeAvailability($data['schedules']);
             $this->validateSchedulesBusinessRules(
                 $data['schedules'],
                 $data['start_date'],
@@ -53,7 +63,7 @@ class MasterScheduleService
                     'actual_start_time' => null,
                     'actual_end_time' => null,
                     'skill_id' => $schedule['skill_id'],
-                    'edited_by' => null,
+                    'edited_by' => $userId,
                 ]);
             }
 
@@ -63,7 +73,11 @@ class MasterScheduleService
 
     public function updateWithSchedules(MasterSchedule $master, array $data, ?int $userId = null): MasterSchedule
     {
-         
+        if ($master->published) {
+            throw ValidationException::withMessages([
+                'published' => ['Cannot modify a published schedule.']
+            ]);
+        }
 
         return DB::transaction(function () use ($master, $data, $userId) {
 
@@ -71,10 +85,9 @@ class MasterScheduleService
             $startDate = $data['start_date'] ?? $master->start_date;
             $endDate = $data['end_date'] ?? $master->end_date;
 
-            // 🔥 منع overlap
             $this->ensureNoMasterOverlap($storeId, $startDate, $endDate, $master->id);
 
-            // 🔥 تحديث بيانات master
+            // 🔥 update master
             $updateData = [];
 
             if (array_key_exists('store_id', $data)) {
@@ -89,12 +102,14 @@ class MasterScheduleService
                 $updateData['end_date'] = $data['end_date'];
             }
 
-             
-
             $master->update($updateData);
 
-            // 🔥 تحديث schedules (SYNC بدل delete all)
+            // 🔥 schedules
             if (array_key_exists('schedules', $data)) {
+
+                $this->validateEmployeesBelongToStore($data['schedules'], $storeId);
+                $this->validateEmployeeNotOnDayOff($data['schedules']);
+                $this->validateEmployeeAvailability($data['schedules']);
 
                 $this->validateSchedulesBusinessRules(
                     $data['schedules'],
@@ -102,23 +117,19 @@ class MasterScheduleService
                     $endDate
                 );
 
-                // 📌 existing schedules
                 $existingSchedules = $master->schedules()->get()->keyBy('id');
 
-                // 📌 IDs القادمة من frontend
                 $incomingIds = collect($data['schedules'])
                     ->pluck('id')
                     ->filter()
                     ->toArray();
 
-                // 🔥 حذف القديم فقط
                 $master->schedules()
                     ->whereNotIn('id', $incomingIds)
                     ->delete();
 
                 foreach ($data['schedules'] as $schedule) {
 
-                    // 🔁 UPDATE
                     if (isset($schedule['id']) && $existingSchedules->has($schedule['id'])) {
 
                         $existingSchedules[$schedule['id']]->update([
@@ -126,19 +137,21 @@ class MasterScheduleService
                             'date' => $schedule['date'],
                             'start_time' => $schedule['start_time'],
                             'end_time' => $schedule['end_time'],
+                            'actual_start_time' => $schedule['actual_start_time'] ?? null,
+                            'actual_end_time' => $schedule['actual_end_time'] ?? null,
                             'skill_id' => $schedule['skill_id'],
                             'edited_by' => $userId,
                         ]);
 
                     } else {
-                        // ➕ CREATE
+
                         $master->schedules()->create([
                             'employee_id' => $schedule['employee_id'] ?? null,
                             'date' => $schedule['date'],
                             'start_time' => $schedule['start_time'],
                             'end_time' => $schedule['end_time'],
-                            'actual_start_time' => null,
-                            'actual_end_time' => null,
+                            'actual_start_time' => $schedule['actual_start_time'] ?? null,
+                            'actual_end_time' => $schedule['actual_end_time'] ?? null,
                             'skill_id' => $schedule['skill_id'],
                             'edited_by' => $userId,
                         ]);
@@ -330,6 +343,101 @@ class MasterScheduleService
                     'start_time' => $schedule['start_time'],
                     'end_time' => $schedule['end_time'],
                 ];
+            }
+        }
+    }
+    private function validateEmployeesBelongToStore(array $schedules, int $storeId): void
+    {
+        foreach ($schedules as $index => $schedule) {
+            if (!empty($schedule['employee_id'])) {
+                $employeeExistsInStore = Employee::where('id', $schedule['employee_id'])
+                    ->where('store_id', $storeId)
+                    ->exists();
+
+                if (!$employeeExistsInStore) {
+                    throw ValidationException::withMessages([
+                        "schedules.$index.employee_id" => [
+                            'The selected employee does not belong to the same store as this master schedule.'
+                        ],
+                    ]);
+                }
+            }
+        }
+    }
+
+    private function validateEmployeeNotOnDayOff(array $schedules): void
+    {
+        foreach ($schedules as $index => $schedule) {
+
+            if (empty($schedule['employee_id'])) {
+                continue;
+            }
+
+            $hasDayOff = DayOff::where('employee_id', $schedule['employee_id'])
+                ->whereDate('date', $schedule['date'])
+                ->where('acceptedStatus', 'approved')
+                ->whereIn('type', ['sick day', 'unavailable', 'pto', 'vto'])
+                ->exists();
+
+            if ($hasDayOff) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    "schedules.$index.employee_id" => [
+                        'This employee has an approved day off on this date and cannot be scheduled.'
+                    ],
+                ]);
+            }
+        }
+    }
+ 
+
+    private function validateEmployeeAvailability(array $schedules): void
+    {
+        foreach ($schedules as $index => $schedule) {
+
+            if (empty($schedule['employee_id'])) {
+                continue;
+            }
+
+            $date = Carbon::parse($schedule['date']);
+            $dayName = strtolower($date->format('l')); // monday
+
+            // 🔍 هل عنده availability بهذا اليوم؟
+            $availability = Availability::with('times')
+                ->where('employee_id', $schedule['employee_id'])
+                ->where('day_of_week', $dayName)
+                ->first();
+
+            if (!$availability) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    "schedules.$index.employee_id" => [
+                        'Employee is not available on this day.'
+                    ],
+                ]);
+            }
+
+            $start = Carbon::createFromFormat('H:i', $schedule['start_time']);
+            $end = Carbon::createFromFormat('H:i', $schedule['end_time']);
+
+            $isInsideAnyRange = false;
+
+            foreach ($availability->times as $time) {
+
+                $from = Carbon::createFromFormat('H:i:s', $time->from);
+                $to = Carbon::createFromFormat('H:i:s', $time->to);
+
+                // 🔥 لازم يكون كامل الشفت ضمن نفس الفترة
+                if ($start->gte($from) && $end->lte($to)) {
+                    $isInsideAnyRange = true;
+                    break;
+                }
+            }
+
+            if (!$isInsideAnyRange) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    "schedules.$index.start_time" => [
+                        'Employee is not available during this time range.'
+                    ],
+                ]);
             }
         }
     }

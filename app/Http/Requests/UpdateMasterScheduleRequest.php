@@ -2,8 +2,11 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Models\MasterSchedule;
 use Carbon\Carbon;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+
 class UpdateMasterScheduleRequest extends FormRequest
 {
     public function authorize(): bool
@@ -36,13 +39,30 @@ class UpdateMasterScheduleRequest extends FormRequest
                 },
             ],
 
- 
             'schedules' => ['sometimes', 'array', 'min:1'],
 
-            'schedules.*.employee_id' => ['nullable', 'exists:employees,id'],
+            'schedules.*.id' => ['sometimes', 'integer', 'exists:schedules,id'],
+
+            'schedules.*.employee_id' => [
+                'nullable',
+                Rule::exists('employees', 'id')->where(function ($query) {
+                    $masterId = $this->route('id');
+                    $currentMaster = MasterSchedule::find($masterId);
+
+                    $storeId = $this->input('store_id') ?? $currentMaster?->store_id;
+
+                    $query->where('store_id', $storeId);
+                }),
+            ],
+
             'schedules.*.date' => ['required_with:schedules', 'date'],
             'schedules.*.start_time' => ['required_with:schedules', 'date_format:H:i'],
             'schedules.*.end_time' => ['required_with:schedules', 'date_format:H:i'],
+
+            // 🔥 actual fields
+            'schedules.*.actual_start_time' => ['nullable', 'date_format:H:i'],
+            'schedules.*.actual_end_time' => ['nullable', 'date_format:H:i'],
+
             'schedules.*.skill_id' => ['required_with:schedules', 'exists:skills,id'],
         ];
     }
@@ -50,10 +70,12 @@ class UpdateMasterScheduleRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
+
             $startDate = $this->input('start_date');
             $endDate = $this->input('end_date');
             $schedules = $this->input('schedules', []);
 
+            // 🔥 date range
             if ($startDate && $endDate) {
                 $start = Carbon::parse($startDate)->startOfDay();
                 $end = Carbon::parse($endDate)->startOfDay();
@@ -71,6 +93,8 @@ class UpdateMasterScheduleRequest extends FormRequest
             }
 
             foreach ($schedules as $index => $schedule) {
+
+                // 🔥 shift validation
                 if (isset($schedule['start_time'], $schedule['end_time'])) {
                     $startTime = Carbon::createFromFormat('H:i', $schedule['start_time']);
                     $endTime = Carbon::createFromFormat('H:i', $schedule['end_time']);
@@ -83,6 +107,21 @@ class UpdateMasterScheduleRequest extends FormRequest
                     }
                 }
 
+                // 🔥 actual validation
+                if (isset($schedule['actual_start_time'], $schedule['actual_end_time'])) {
+
+                    $actualStart = Carbon::createFromFormat('H:i', $schedule['actual_start_time']);
+                    $actualEnd = Carbon::createFromFormat('H:i', $schedule['actual_end_time']);
+
+                    if ($actualEnd->lte($actualStart)) {
+                        $validator->errors()->add(
+                            "schedules.$index.actual_end_time",
+                            'actual_end_time must be after actual_start_time.'
+                        );
+                    }
+                }
+
+                // 🔥 داخل range
                 if (isset($schedule['date']) && $startDate && $endDate) {
                     $scheduleDate = Carbon::parse($schedule['date'])->startOfDay();
                     $start = Carbon::parse($startDate)->startOfDay();

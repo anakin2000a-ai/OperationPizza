@@ -3,18 +3,22 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\FilterPublishedSchedulesRequest;
 use App\Http\Requests\StoreMasterScheduleRequest;
 use App\Http\Requests\UpdateMasterScheduleRequest;
+use App\Services\Api\FiltersService;
 use App\Services\Api\MasterScheduleService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Throwable;
+use App\Http\Requests\FilterSchedulesByEmployeeRequest;
 
 class MasterScheduleController extends Controller
 {
-    public function __construct(private MasterScheduleService $service) {}
+    public function __construct(private MasterScheduleService $service,private FiltersService $filtersService) {}
+    
 
     public function index(Request $request): JsonResponse
     {
@@ -221,6 +225,45 @@ class MasterScheduleController extends Controller
             return response()->json([
                 'message' => 'Force delete failed',
                 'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+    public function filterPublished(FilterPublishedSchedulesRequest $request): JsonResponse
+    {
+        try {
+            $data = $this->filtersService->getPublishedFlexible(
+                $request->validated()
+            );
+
+            return response()->json([
+                'success' => true,
+                'data' => $data
+            ]);
+
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Failed to fetch data',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function filterByEmployee(FilterSchedulesByEmployeeRequest $request): JsonResponse
+    {
+        try {
+            $data = $this->filtersService->filterSchedulesByEmployee(
+                $request->validated()
+            );
+
+            return response()->json([
+                'success' => true,
+                'data' => $data
+            ]);
+
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Failed to filter schedules',
+                'error' => $e->getMessage()
             ], 500);
         }
     }

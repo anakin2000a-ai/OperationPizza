@@ -9,9 +9,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('master-schedules', [MasterScheduleController::class, 'index']);//only master schedules 
     Route::post('master-schedules/create', [MasterScheduleController::class, 'store']);//store with schedules
     Route::get('master-schedules/{id}', [MasterScheduleController::class, 'show']);//master schedule with schedules
-    Route::put('master-schedules/{id}', [MasterScheduleController::class, 'update']);//update master schedule with schedules
+    Route::put('master-schedules/update/{id}', [MasterScheduleController::class, 'update']);//update master schedule with schedules
     Route::delete('master-schedules/{id}', [MasterScheduleController::class, 'softDelete']);//soft delete master schedule
     Route::post('master-schedules/{id}/publish', [MasterScheduleController::class, 'publish']);//publish master schedule
     Route::post('master-schedules/{id}/restore', [MasterScheduleController::class, 'restore']);//restore master schedule
     Route::delete('master-schedules/{id}/force', [MasterScheduleController::class, 'forceDelete']);//force delete master schedule
+    Route::post('master-schedules/filter', [MasterScheduleController::class, 'filterPublished']);//filter published master schedules
+    Route::post('schedules/filter-employee', [MasterScheduleController::class, 'filterByEmployee']);//filter published schedules by employee id and for all employees
 });

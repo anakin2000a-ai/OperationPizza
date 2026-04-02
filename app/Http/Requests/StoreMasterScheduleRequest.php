@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
 use Carbon\Carbon;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+
 class StoreMasterScheduleRequest extends FormRequest
 {
     public function authorize(): bool
@@ -38,7 +40,12 @@ class StoreMasterScheduleRequest extends FormRequest
 
             'schedules' => ['required', 'array', 'min:1'],
 
-            'schedules.*.employee_id' => ['nullable', 'exists:employees,id'],
+            'schedules.*.employee_id' => [
+                'nullable',
+                Rule::exists('employees', 'id')->where(function ($query) {
+                    $query->where('store_id', $this->input('store_id'));
+                }),
+            ],
             'schedules.*.date' => ['required', 'date'],
             'schedules.*.start_time' => ['required', 'date_format:H:i'],
             'schedules.*.end_time' => ['required', 'date_format:H:i'],
@@ -67,7 +74,6 @@ class StoreMasterScheduleRequest extends FormRequest
                         'The date range must be exactly 7 days (Tuesday to Monday).'
                     );
                 }
-                
             }
 
             foreach ($schedules as $index => $schedule) {
