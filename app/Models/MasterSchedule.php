@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class MasterSchedule extends Model
 {
+    use SoftDeletes;
     protected $table = 'master_schedule';
 
     protected $fillable = [

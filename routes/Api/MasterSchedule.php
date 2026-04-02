@@ -1,0 +1,17 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\MasterScheduleController;
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('master-schedules/trashed', [MasterScheduleController::class, 'trashed']);
+
+    Route::get('master-schedules', [MasterScheduleController::class, 'index']);//only master schedules 
+    Route::post('master-schedules/create', [MasterScheduleController::class, 'store']);//store with schedules
+    Route::get('master-schedules/{id}', [MasterScheduleController::class, 'show']);//master schedule with schedules
+    Route::put('master-schedules/{id}', [MasterScheduleController::class, 'update']);//update master schedule with schedules
+    Route::delete('master-schedules/{id}', [MasterScheduleController::class, 'softDelete']);//soft delete master schedule
+    Route::post('master-schedules/{id}/publish', [MasterScheduleController::class, 'publish']);//publish master schedule
+    Route::post('master-schedules/{id}/restore', [MasterScheduleController::class, 'restore']);//restore master schedule
+    Route::delete('master-schedules/{id}/force', [MasterScheduleController::class, 'forceDelete']);//force delete master schedule
+});
