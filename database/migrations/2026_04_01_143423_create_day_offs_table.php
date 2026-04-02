@@ -22,6 +22,7 @@ return new class extends Migration
             $table->enum('type', ['sick day', 'unavailable', 'pto', 'vto']);
 
             $table->text('note')->nullable();
+            $table->text('managerNote')->nullable();
 
             $table->enum('acceptedStatus', ['pending', 'approved', 'rejected']);
 

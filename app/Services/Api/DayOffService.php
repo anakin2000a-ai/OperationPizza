@@ -40,11 +40,13 @@ class DayOffService
         if (array_key_exists('date', $data)) {
             $updateData['date'] = $data['date'];
         }
+        if (array_key_exists('managerNote', $data)) {
+            $updateData['managerNote'] = $data['managerNote'];
+        }
 
         if (array_key_exists('acceptedStatus', $data)) {
             $updateData['acceptedStatus'] = $data['acceptedStatus'];
 
-            // 🔥 أهم سطر
             $updateData['accepted_by'] = $userId;
         }
 

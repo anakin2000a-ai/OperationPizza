@@ -25,9 +25,10 @@ class UpdateDayOffRequest extends FormRequest
     {
         return [
             'date' => ['sometimes', 'date'],
+             'managerNote' => ['required', 'string'],
 
             'acceptedStatus' => [
-                'sometimes',
+                'required',
                 Rule::in(['pending', 'approved', 'rejected'])
             ],
         ];

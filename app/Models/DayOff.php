@@ -14,6 +14,7 @@ class DayOff extends Model
         'requested_at',
         'type',
         'note',
+        'managerNote',
         'acceptedStatus',
         'accepted_by'
     ];
