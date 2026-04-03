@@ -410,7 +410,7 @@ class MasterScheduleController extends Controller
 
 
 
-    public function copyPreviousWeek(CopyPreviousWeekRequest $request): JsonResponse
+    public function copyWeek(CopyPreviousWeekRequest $request): JsonResponse
     {
         try {
             $data = $this->service->copySchedule(

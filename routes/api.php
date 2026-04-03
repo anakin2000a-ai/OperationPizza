@@ -9,3 +9,4 @@ require __DIR__ . '/api/availability-times.php';
 require __DIR__ . '/api/dayOff.php';
 require __DIR__ . '/api/MasterSchedule.php';
 require __DIR__ . '/api/EmployeeByStore.php';
+require __DIR__ . '/api/Template.php';

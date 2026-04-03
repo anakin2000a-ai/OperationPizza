@@ -8,13 +8,12 @@ class ScheduleTemplate extends Model
     protected $fillable = [
         'name',
         'description',
-        'store_id'
     ];
 
-    public function store()
-    {
-        return $this->belongsTo(Store::class);
-    }
+    // public function store()
+    // {
+    //     return $this->belongsTo(Store::class);
+    // }
 
     public function details()
     {

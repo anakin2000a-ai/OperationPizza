@@ -28,5 +28,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('scheduling/init', [MasterScheduleController::class, 'initScheduling']);//initialize scheduling for a date range and store
 
 
-    Route::post('master-schedules/copy-previous', [MasterScheduleController::class, 'copyPreviousWeek']);//copy previous week's schedule
+    Route::post('master-schedules/copy', [MasterScheduleController::class, 'copyWeek']);//copy week's schedule
 });
