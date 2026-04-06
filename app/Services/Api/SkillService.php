@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Collection;
 
 class SkillService
 {
-   public function getAll(): Collection
+    public function getAll(): Collection
     {
         return Skill::with(['employees' => function ($query) {
             $query->orderBy('store_id', 'asc');
@@ -43,5 +43,21 @@ class SkillService
     public function delete(Skill $skill): bool
     {
         return $skill->delete();
+    }
+
+    public function restore(Skill $skill): bool
+    {
+        return $skill->restore();
+    }
+     public function getTrashed(): Collection
+    {
+        return Skill::onlyTrashed()
+            ->orderBy('id', 'asc')
+            ->get();
+    }
+
+    public function getByIdWithTrashed(int $id): Skill
+    {
+        return Skill::withTrashed()->findOrFail($id);
     }
 }

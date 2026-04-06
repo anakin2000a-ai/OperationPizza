@@ -150,4 +150,60 @@ class SkillController extends Controller
             ], 500);
         }
     }
+
+    public function restore(int $id): JsonResponse
+    {
+        try {
+            $skill = $this->skillService->getByIdWithTrashed($id);
+
+            if (!$skill->trashed()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Skill is not deleted.',
+                    'code' => 'SKILL_NOT_TRASHED',
+                ], 409);
+            }
+
+            $this->skillService->restore($skill);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Skill restored successfully.',
+                'code' => 'SKILL_RESTORED',
+                'data' => $skill->fresh(),
+            ], 200);
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Skill not found.',
+                'code' => 'SKILL_NOT_FOUND',
+            ], 404);
+
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to restore skill.',
+                'code' => 'INTERNAL_SERVER_ERROR',
+            ], 500);
+        }
+    }
+    public function trashed(): JsonResponse
+    {
+        try {
+            $skills = $this->skillService->getTrashed();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Trashed skills fetched successfully.',
+                'data' => $skills,
+            ], 200);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch trashed skills.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 }
