@@ -6,6 +6,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use App\Models\Availability;
 use App\Models\AvailabilityTime;
+use App\Models\Store; // 👈 إضافة
 
 class UpdateEmployeeAvailabilityRequest extends FormRequest
 {
@@ -26,7 +27,13 @@ class UpdateEmployeeAvailabilityRequest extends FormRequest
     public function rules(): array
     {
         $id = $this->route('employee_availability');
-        $storeId = $this->route('store');
+
+        // 👇 حل مشكلة store (Model أو string)
+        $storeParam = $this->route('store');
+
+        $storeId = $storeParam instanceof Store
+            ? $storeParam->id
+            : Store::where('store', $storeParam)->value('id');
 
         $availability = Availability::where('id', $id)
             ->whereHas('employee', function ($query) use ($storeId) {
@@ -93,7 +100,13 @@ class UpdateEmployeeAvailabilityRequest extends FormRequest
             }
 
             $id = $this->route('employee_availability');
-            $storeId = $this->route('store');
+
+            // 👇 نفس حل store هنا أيضًا
+            $storeParam = $this->route('store');
+
+            $storeId = $storeParam instanceof Store
+                ? $storeParam->id
+                : Store::where('store', $storeParam)->value('id');
 
             $availability = Availability::where('id', $id)
                 ->whereHas('employee', function ($query) use ($storeId) {

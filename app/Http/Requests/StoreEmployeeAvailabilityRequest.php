@@ -6,6 +6,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use App\Models\Availability;
 use App\Models\AvailabilityTime;
+use App\Models\Store; // 👈 أضفناه فقط
 
 class StoreEmployeeAvailabilityRequest extends FormRequest
 {
@@ -25,11 +26,18 @@ class StoreEmployeeAvailabilityRequest extends FormRequest
 
     public function rules(): array
     {
+        // 👇 حل المشكلة هنا فقط
+        $storeParam = $this->route('store');
+
+        $storeId = $storeParam instanceof Store
+            ? $storeParam->id
+            : Store::where('store', $storeParam)->value('id');
+
         return [
             'employee_id' => [
                 'required',
-                Rule::exists('employees', 'id')->where(function ($query) {
-                    $query->where('store_id', $this->route('store'));
+                Rule::exists('employees', 'id')->where(function ($query) use ($storeId) {
+                    $query->where('store_id', $storeId);
                 }),
             ],
 

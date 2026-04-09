@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreEmployeeAvailabilityRequest;
 use App\Http\Requests\UpdateEmployeeAvailabilityRequest;
+use App\Models\Store;
 use App\Services\Api\EmployeeAvailabilityService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -16,12 +17,12 @@ class EmployeeAvailabilityController extends Controller
         protected EmployeeAvailabilityService $service
     ) {}
 
-    public function index(int $store): JsonResponse
+    public function index(Store $store): JsonResponse
     {
         try {
             return response()->json([
                 'success' => true,
-                'data' => $this->service->getAll($store)
+                'data' => $this->service->getAll($store->id)
             ]);
         } catch (Throwable $e) {
             return response()->json([
@@ -32,12 +33,12 @@ class EmployeeAvailabilityController extends Controller
         }
     }
 
-    public function store(StoreEmployeeAvailabilityRequest $request, int $store): JsonResponse
+    public function store(StoreEmployeeAvailabilityRequest $request, Store $store): JsonResponse
     {
         try {
             return response()->json([
                 'success' => true,
-                'data' => $this->service->create($request->validated(), $store)
+                'data' => $this->service->create($request->validated(), $store->id)
             ], 201);
         } catch (Throwable $e) {
             return response()->json([
@@ -48,12 +49,12 @@ class EmployeeAvailabilityController extends Controller
         }
     }
 
-    public function show(int $store, int $employee_availability): JsonResponse
+    public function show(Store $store, int $employee_availability): JsonResponse
     {
         try {
             return response()->json([
                 'success' => true,
-                'data' => $this->service->getById($employee_availability, $store)
+                'data' => $this->service->getById($employee_availability, $store->id)
             ]);
         } catch (ModelNotFoundException) {
             return response()->json([
@@ -69,14 +70,14 @@ class EmployeeAvailabilityController extends Controller
         }
     }
 
-    public function update(UpdateEmployeeAvailabilityRequest $request, int $store, int $employee_availability): JsonResponse
+    public function update(UpdateEmployeeAvailabilityRequest $request, Store $store, int $employee_availability): JsonResponse
     {
         try {
-            $availability = $this->service->getById($employee_availability, $store);
+            $availability = $this->service->getById($employee_availability, $store->id);
 
             return response()->json([
                 'success' => true,
-                'data' => $this->service->update($availability, $request->validated(), $store)
+                'data' => $this->service->update($availability, $request->validated(), $store->id)
             ]);
         } catch (ModelNotFoundException) {
             return response()->json([
@@ -92,10 +93,10 @@ class EmployeeAvailabilityController extends Controller
         }
     }
 
-    public function destroy(int $store, int $employee_availability): JsonResponse
+    public function destroy(Store $store, int $employee_availability): JsonResponse
     {
         try {
-            $availability = $this->service->getById($employee_availability, $store);
+            $availability = $this->service->getById($employee_availability, $store->id);
 
             $this->service->delete($availability);
 

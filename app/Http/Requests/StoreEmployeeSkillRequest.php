@@ -15,12 +15,12 @@ class StoreEmployeeSkillRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'employee_id' => [
-                'required',
-                Rule::exists('employees', 'id')->where(function ($q) {
-                    $q->where('store_id', $this->route('store')->id); // 👈 التعديل
+           'employee_id' => [
+            'required',
+                Rule::exists('employees', 'id')->where(function ($query) {
+                    $query->where('store_id', $this->route('store')->id);
                 }),
-            ],
+              ],
 
             'skill_id' => [
                 'required',
