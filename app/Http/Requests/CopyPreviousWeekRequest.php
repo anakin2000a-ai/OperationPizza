@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\MasterSchedule;
+use App\Models\Store;
 use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -15,8 +16,14 @@ class CopyPreviousWeekRequest extends FormRequest
 
     protected function prepareForValidation()
     {
+        $storeParam = $this->route('store');
+
+        $storeId = $storeParam instanceof Store
+            ? $storeParam->id
+            : Store::where('store', $storeParam)->value('id');
+
         $this->merge([
-            'store_id' => $this->route('store'),
+            'store_id' => $storeId,
         ]);
     }
 
@@ -72,7 +79,6 @@ class CopyPreviousWeekRequest extends FormRequest
                 ->first();
 
             if ($latest) {
-
                 $expectedStart = Carbon::parse($latest->start_date)->addWeek();
                 $expectedEnd = Carbon::parse($latest->end_date)->addWeek();
 

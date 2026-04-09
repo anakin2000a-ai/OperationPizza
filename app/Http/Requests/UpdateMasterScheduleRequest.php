@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\MasterSchedule;
+use App\Models\Store;
 use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -16,8 +17,14 @@ class UpdateMasterScheduleRequest extends FormRequest
 
     protected function prepareForValidation()
     {
+        $storeParam = $this->route('store');
+
+        $storeId = $storeParam instanceof Store
+            ? $storeParam->id
+            : Store::where('store', $storeParam)->value('id');
+
         $this->merge([
-            'store_id' => $this->route('store'),
+            'store_id' => $storeId,
         ]);
     }
 

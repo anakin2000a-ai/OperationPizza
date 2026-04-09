@@ -13,16 +13,17 @@ use Illuminate\Validation\ValidationException;
 use Throwable;
 use App\Http\Requests\InitSchedulingRequest;
 use App\Http\Requests\CopyPreviousWeekRequest;
+use App\Models\Store;
 use Illuminate\Support\Facades\Log;
 
 class MasterScheduleController extends Controller
 {
     public function __construct(private MasterScheduleService $service) {}
 
-    public function getPublishedSchedules(int $store): JsonResponse
+    public function getPublishedSchedules(Store $store): JsonResponse
     {
         try {
-            $data = $this->service->getPublishedSchedules($store);
+            $data = $this->service->getPublishedSchedules($store->id);
 
             return response()->json([
                 'success' => true,
@@ -36,12 +37,12 @@ class MasterScheduleController extends Controller
         }
     }
 
-    public function index(Request $request, int $store): JsonResponse
+    public function index(Request $request, Store $store): JsonResponse
     {
         try {
             $perPage = min((int) $request->get('per_page', 10), 50);
 
-            $data = $this->service->getAllPaginated($perPage, $store);
+            $data = $this->service->getAllPaginated($perPage, $store->id);
 
             return response()->json([
                 'success' => true,
@@ -54,11 +55,11 @@ class MasterScheduleController extends Controller
         }
     }
 
-    public function store(StoreMasterScheduleRequest $request, int $store): JsonResponse
+    public function store(StoreMasterScheduleRequest $request, Store $store): JsonResponse
     {
         try {
             $payload = array_merge($request->validated(), [
-                'store_id' => $store
+                'store_id' => $store->id
             ]);
 
             $record = $this->service->storeWithSchedules($payload, auth()->id());
@@ -80,10 +81,10 @@ class MasterScheduleController extends Controller
         }
     }
 
-    public function show(int $store, int $id): JsonResponse
+    public function show(Store $store, int $id): JsonResponse
     {
         try {
-            $record = $this->service->getById($id, $store);
+            $record = $this->service->getById($id, $store->id);
 
             return response()->json([
                 'success' => true,
@@ -96,13 +97,13 @@ class MasterScheduleController extends Controller
         }
     }
 
-    public function update(UpdateMasterScheduleRequest $request, int $store, int $id): JsonResponse
+    public function update(UpdateMasterScheduleRequest $request, Store $store, int $id): JsonResponse
     {
         try {
-            $record = $this->service->getById($id, $store);
+            $record = $this->service->getById($id, $store->id);
 
             $payload = array_merge($request->validated(), [
-                'store_id' => $store
+                'store_id' => $store->id
             ]);
 
             $updated = $this->service->updateWithSchedules(
@@ -132,10 +133,10 @@ class MasterScheduleController extends Controller
         }
     }
 
-    public function publish(int $store, int $id): JsonResponse
+    public function publish(Store $store, int $id): JsonResponse
     {
         try {
-            $record = $this->service->getById($id, $store);
+            $record = $this->service->getById($id, $store->id);
 
             $published = $this->service->publish($record, auth()->id());
 
@@ -154,10 +155,10 @@ class MasterScheduleController extends Controller
         }
     }
 
-    public function unpublish(int $store, int $id): JsonResponse
+    public function unpublish(Store $store, int $id): JsonResponse
     {
         try {
-            $record = $this->service->getById($id, $store);
+            $record = $this->service->getById($id, $store->id);
 
             $unpublished = $this->service->unpublish($record);
 
@@ -176,10 +177,10 @@ class MasterScheduleController extends Controller
         }
     }
 
-    public function trashed(int $store): JsonResponse
+    public function trashed(Store $store): JsonResponse
     {
         try {
-            $data = $this->service->getTrashed($store);
+            $data = $this->service->getTrashed($store->id);
 
             return response()->json([
                 'success' => true,
@@ -193,10 +194,10 @@ class MasterScheduleController extends Controller
         }
     }
 
-    public function softDelete(int $store, int $id): JsonResponse
+    public function softDelete(Store $store, int $id): JsonResponse
     {
         try {
-            $record = $this->service->getById($id, $store);
+            $record = $this->service->getById($id, $store->id);
 
             $this->service->delete($record);
 
@@ -212,10 +213,10 @@ class MasterScheduleController extends Controller
         }
     }
 
-    public function restore(int $store, int $id): JsonResponse
+    public function restore(Store $store, int $id): JsonResponse
     {
         try {
-            $record = $this->service->restore($id, $store);
+            $record = $this->service->restore($id, $store->id);
 
             return response()->json([
                 'success' => true,
@@ -230,10 +231,10 @@ class MasterScheduleController extends Controller
         }
     }
 
-    public function forceDelete(int $store, int $id): JsonResponse
+    public function forceDelete(Store $store, int $id): JsonResponse
     {
         try {
-            $this->service->forceDelete($id, $store);
+            $this->service->forceDelete($id, $store->id);
 
             return response()->json([
                 'success' => true,
@@ -247,10 +248,10 @@ class MasterScheduleController extends Controller
         }
     }
 
-    public function deleteSchedule(int $store, int $id): JsonResponse
+    public function deleteSchedule(Store $store, int $id): JsonResponse
     {
         try {
-            $this->service->deleteSchedule($id, $store);
+            $this->service->deleteSchedule($id, $store->id);
 
             return response()->json([
                 'success' => true,
@@ -266,10 +267,10 @@ class MasterScheduleController extends Controller
         }
     }
 
-    public function restoreSchedule(int $store, int $id): JsonResponse
+    public function restoreSchedule(Store $store, int $id): JsonResponse
     {
         try {
-            $record = $this->service->restoreSchedule($id,$store);
+            $record = $this->service->restoreSchedule($id,$store->id);
 
             return response()->json([
                 'success' => true,
@@ -284,10 +285,10 @@ class MasterScheduleController extends Controller
         }
     }
 
-    public function forceDeleteSchedule(int $store, int $id): JsonResponse
+    public function forceDeleteSchedule(Store $store, int $id): JsonResponse
     {
         try {
-            $this->service->forceDeleteSchedule($id,$store);
+            $this->service->forceDeleteSchedule($id,$store->id);
 
             return response()->json([
                 'success' => true,
@@ -303,12 +304,12 @@ class MasterScheduleController extends Controller
         }
     }
 
-    public function initScheduling(InitSchedulingRequest $request, int $store): JsonResponse
+    public function initScheduling(InitSchedulingRequest $request, Store $store): JsonResponse
     {
         try {
             $data = $this->service->initScheduling(
                 array_merge($request->validated(), [
-                    'store_id' => $store
+                    'store_id' => $store->id
                 ])
             );
 
@@ -326,12 +327,12 @@ class MasterScheduleController extends Controller
         }
     }
 
-    public function copyWeek(CopyPreviousWeekRequest $request, int $store): JsonResponse
+    public function copyWeek(CopyPreviousWeekRequest $request, Store $store): JsonResponse
     {
         try {
             $data = $this->service->copySchedule(
                 array_merge($request->validated(), [
-                    'store_id' => $store
+                    'store_id' => $store->id
                 ]),
                 auth()->id()
             );
