@@ -15,6 +15,9 @@ return new class extends Migration
                 $table->unsignedBigInteger('id')->primary();
                 $table->string('name');
                 $table->string('email')->unique();
+                $table->string('password');
+                $table->enum('role', ['SecondShiftStoreManager', 'ThirdShiftStoreManager', 'SeniorManager', 'Admin', 'Employee'])->default('Employee');
+
                 $table->rememberToken();
                 $table->timestamps();
             });
