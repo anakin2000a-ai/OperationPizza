@@ -10,9 +10,9 @@ return new class extends Migration
         Schema::create('taxes', function (Blueprint $table) {
             $table->id();
             $table->float('taxAmount');
-            $table->enum('taxtype', ['w2']);
-            $table->unsignedBigInteger('createdBy');
-            $table->unsignedBigInteger('editedBy');
+            $table->enum('taxtype', ['w2','1099']);
+            $table->unsignedBigInteger('createdBy')->nullable(); // Foreign key for users
+            $table->unsignedBigInteger('editedBy')->nullable(); // Foreign key for users
             $table->timestamps();
             $table->softDeletes(); // For soft deletes
 
