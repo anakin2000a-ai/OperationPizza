@@ -9,12 +9,14 @@ return new class extends Migration
     {
         Schema::create('loans', function (Blueprint $table) {
             $table->id();
+            $table->string('loanName')->nullable();
+
             $table->float('loanAmount');
             $table->float('taxValue')->nullable();
             $table->float('loanAmountWithTax');
             $table->enum('loanType', ['car', 'phone']);
-            $table->unsignedBigInteger('createdBy');
-            $table->unsignedBigInteger('editedBy');
+            $table->unsignedBigInteger('createdBy')->nullable();
+            $table->unsignedBigInteger('editedBy')->nullable();
             $table->timestamps();
             $table->softDeletes(); // For soft deletes
 
