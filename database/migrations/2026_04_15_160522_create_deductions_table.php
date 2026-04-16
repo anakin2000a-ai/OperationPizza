@@ -8,7 +8,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('deductions', function (Blueprint $table) {
-            $table->unsignedBigInteger('id')->primary();
+            $table->id();
             $table->unsignedBigInteger('employeeId');
             $table->unsignedBigInteger('ApartmentId')->nullable(); // Foreign key for apartments
             $table->unsignedBigInteger('SimId')->nullable(); // Foreign key for sim
@@ -20,7 +20,7 @@ return new class extends Migration
             // Foreign Key Constraints
             $table->foreign('employeeId')->references('id')->on('employees')->onDelete('restrict');
             $table->foreign('ApartmentId')->references('id')->on('apartments')->onDelete('set null');
-            $table->foreign('SimId')->references('id')->on('sim')->onDelete('set null');
+            $table->foreign('SimId')->references('id')->on('sims')->onDelete('set null');
             $table->foreign('createdBy')->references('id')->on('users')->onDelete('restrict');
             $table->foreign('editedBy')->references('id')->on('users')->onDelete('restrict');
         });

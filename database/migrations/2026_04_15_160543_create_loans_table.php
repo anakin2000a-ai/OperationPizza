@@ -8,7 +8,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('loans', function (Blueprint $table) {
-            $table->unsignedBigInteger('id')->primary();
+            $table->id();
             $table->float('loanAmount');
             $table->float('taxValue')->nullable();
             $table->float('loanAmountWithTax');

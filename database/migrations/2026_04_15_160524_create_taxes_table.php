@@ -8,7 +8,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('taxes', function (Blueprint $table) {
-            $table->unsignedBigInteger('id')->primary();
+            $table->id();
             $table->float('taxAmount');
             $table->enum('taxtype', ['w2']);
             $table->unsignedBigInteger('createdBy');

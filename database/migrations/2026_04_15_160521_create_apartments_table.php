@@ -8,10 +8,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('apartments', function (Blueprint $table) {
-            $table->unsignedBigInteger('id')->primary();
+            $table->id();
+            $table->string('Location')->unique();
             $table->float('ApartmentRent')->default(125);
-            $table->unsignedBigInteger('createdBy');
-            $table->unsignedBigInteger('editedBy');
+            $table->unsignedBigInteger('createdBy')->nullable();
+            $table->unsignedBigInteger('editedBy')->nullable();
             $table->timestamps();
             $table->softDeletes(); // For soft deletes
 

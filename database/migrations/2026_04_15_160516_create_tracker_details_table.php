@@ -8,7 +8,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('tracker_details', function (Blueprint $table) {
-            $table->unsignedBigInteger('id')->primary();
+            $table->id();
             $table->unsignedBigInteger('trackerId');  // Foreign key for tracker_schedule
             $table->unsignedBigInteger('employeeId'); // Foreign key for employees
             $table->boolean('respect');

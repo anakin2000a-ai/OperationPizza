@@ -2,10 +2,13 @@
 
 namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Sim extends Model
 {
-    protected $fillable = ['simCardInstallment', 'createdBy', 'editedBy'];
+    use SoftDeletes;
+     protected $table = 'sims';
+     protected $fillable = ['simCardInstallment','SimCardType', 'createdBy', 'editedBy'];
 
     public function deductions()
     {

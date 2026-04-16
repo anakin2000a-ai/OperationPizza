@@ -8,7 +8,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('employeesloans', function (Blueprint $table) {
-            $table->unsignedBigInteger('id')->primary();
+            $table->id();
             $table->unsignedBigInteger('employeeId');
             $table->unsignedBigInteger('loansId');
             $table->enum('loanStatus', ['active', 'completed']);

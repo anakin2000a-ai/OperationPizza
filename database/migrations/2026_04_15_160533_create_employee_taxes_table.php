@@ -8,7 +8,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('employeetaxes', function (Blueprint $table) {
-            $table->unsignedBigInteger('id')->primary();
+            $table->id();
             $table->unsignedBigInteger('employeeId')->nullable(); // Allow null for employeeId
             $table->unsignedBigInteger('taxesId')->nullable(); // Allow null for taxesId
             $table->unsignedBigInteger('createdBy');

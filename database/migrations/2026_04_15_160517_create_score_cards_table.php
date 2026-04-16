@@ -8,7 +8,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('score_cards', function (Blueprint $table) {
-            $table->unsignedBigInteger('id')->primary();
+            $table->id();
             $table->unsignedBigInteger('employeeId');  // Foreign Key for employees
             $table->unsignedBigInteger('scheduleWeekId');  // Foreign Key for master_schedule
             $table->float('totalHoursWorked');
