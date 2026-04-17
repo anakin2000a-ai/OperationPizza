@@ -2,111 +2,123 @@
 
 namespace App\Services\Api;
 
-use App\Models\Employee;
 use App\Models\Deduction;
+use App\Models\Employee;
 use App\Models\EmployeeTax;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 
 class EmployeeService
 {
-    public function create(array $data, $store)
+    public function create(array $data, $store): Employee
     {
         return DB::transaction(function () use ($data, $store) {
-
             $employee = Employee::create([
-                'store_id' => $store->id,
+                'store_id'  => $store->id,
                 'FirstName' => $data['FirstName'],
-                'LastName' => $data['LastName'],
-                'HaveCar' => $data['HaveCar'],
-                'phone' => $data['phone'],
-                'email' => $data['email'],
+                'LastName'  => $data['LastName'],
+                'HaveCar'   => $data['HaveCar'],
+                'phone'     => $data['phone'],
+                'email'     => $data['email'],
                 'hire_date' => $data['hire_date'],
-                'status' => $data['status'],
+                'status'    => $data['status'],
             ]);
 
-            // Deduction
             if (!empty($data['ApartmentId']) || !empty($data['SimId'])) {
                 Deduction::create([
-                    'employeeId' => $employee->id,
+                    'employeeId'  => $employee->id,
                     'ApartmentId' => $data['ApartmentId'] ?? null,
-                    'SimId' => $data['SimId'] ?? null,
-                    'createdBy' => auth()->id(),
-                    'editedBy' => null,
+                    'SimId'       => $data['SimId'] ?? null,
+                    'createdBy'   => auth()->id(),
+                    'editedBy'    => null,
                 ]);
             }
- 
-            // Taxes
+
             if (!empty($data['taxesId'])) {
                 EmployeeTax::create([
                     'employeeId' => $employee->id,
-                    'taxesId' => $data['taxesId'],
-                    'createdBy' => auth()->id(),
-                    'editedBy' => null,
+                    'taxesId'    => $data['taxesId'],
+                    'createdBy'  => auth()->id(),
+                    'editedBy'   => null,
                 ]);
             }
 
-            return $employee;
+            return $employee->fresh();
         });
     }
 
-    public function update(array $data, Employee $employee)
+    public function findEmployeeInStore(int $storeId, int $employeeId): Employee
+    {
+        return Employee::where('store_id', $storeId)->findOrFail($employeeId);
+    }
+
+    public function update(array $data, Employee $employee): Employee
     {
         return DB::transaction(function () use ($data, $employee) {
+            $employeeData = array_filter([
+                'FirstName' => $data['FirstName'] ?? null,
+                'LastName'  => $data['LastName'] ?? null,
+                'HaveCar'   => $data['HaveCar'] ?? null,
+                'phone'     => $data['phone'] ?? null,
+                'email'     => $data['email'] ?? null,
+                'hire_date' => $data['hire_date'] ?? null,
+                'status'    => $data['status'] ?? null,
+            ], fn ($value) => !is_null($value));
 
-            $employee->update([
-                'FirstName' => $data['FirstName'],
-                'LastName' => $data['LastName'],
-                'HaveCar' => $data['HaveCar'],
-                'phone' => $data['phone'],
-                'email' => $data['email'],
-                'hire_date' => $data['hire_date'],
-                'status' => $data['status'],
-            ]);
-
-            // Deduction
-            $deduction = Deduction::where('employeeId', $employee->id)->first();
-
-            if ($deduction) {
-                $deduction->update([
-                    'ApartmentId' => $data['ApartmentId'] ?? null,
-                    'SimId' => $data['SimId'] ?? null,
-                    'editedBy' => auth()->id(),
-                ]);
-            } elseif (!empty($data['ApartmentId']) || !empty($data['SimId'])) {
-                Deduction::create([
-                    'employeeId' => $employee->id,
-                    'ApartmentId' => $data['ApartmentId'] ?? null,
-                    'SimId' => $data['SimId'] ?? null,
-                    'createdBy' => auth()->id(),
-                    'editedBy' => null,
-                ]);
+            if (!empty($employeeData)) {
+                $employee->update($employeeData);
             }
 
-            // Taxes
-            $tax = EmployeeTax::where('employeeId', $employee->id)->first();
+            if (array_key_exists('ApartmentId', $data) || array_key_exists('SimId', $data)) {
+                $deduction = Deduction::where('employeeId', $employee->id)->first();
+                $hasDeductionValues = !empty($data['ApartmentId']) || !empty($data['SimId']);
 
-            if ($tax) {
-                $tax->update([
-                    'taxesId' => $data['taxesId'] ?? null,
-                    'editedBy' => auth()->id(),
-                ]);
-            } elseif (!empty($data['taxesId'])) {
-                EmployeeTax::create([
-                    'employeeId' => $employee->id,
-                    'taxesId' => $data['taxesId'],
-                    'createdBy' => auth()->id(),
-                    'editedBy' => auth()->id(),
-                ]);
+                if ($deduction && $hasDeductionValues) {
+                    $deduction->update([
+                        'ApartmentId' => $data['ApartmentId'] ?? null,
+                        'SimId'       => $data['SimId'] ?? null,
+                        'editedBy'    => auth()->id(),
+                    ]);
+                } elseif ($deduction && !$hasDeductionValues) {
+                    $deduction->delete();
+                } elseif (!$deduction && $hasDeductionValues) {
+                    Deduction::create([
+                        'employeeId'  => $employee->id,
+                        'ApartmentId' => $data['ApartmentId'] ?? null,
+                        'SimId'       => $data['SimId'] ?? null,
+                        'createdBy'   => auth()->id(),
+                        'editedBy'    => null,
+                    ]);
+                }
             }
 
-            return $employee;
+            if (array_key_exists('taxesId', $data)) {
+                $tax = EmployeeTax::where('employeeId', $employee->id)->first();
+
+                if ($tax && !empty($data['taxesId'])) {
+                    $tax->update([
+                        'taxesId'  => $data['taxesId'],
+                        'editedBy' => auth()->id(),
+                    ]);
+                } elseif ($tax && empty($data['taxesId'])) {
+                    $tax->delete();
+                } elseif (!$tax && !empty($data['taxesId'])) {
+                    EmployeeTax::create([
+                        'employeeId' => $employee->id,
+                        'taxesId'    => $data['taxesId'],
+                        'createdBy'  => auth()->id(),
+                        'editedBy'   => null,
+                    ]);
+                }
+            }
+
+            return $employee->fresh();
         });
     }
 
-    public function delete(Employee $employee)
+    public function delete(Employee $employee): void
     {
-        return DB::transaction(function () use ($employee) {
-
+        DB::transaction(function () use ($employee) {
             EmployeeTax::where('employeeId', $employee->id)->delete();
             Deduction::where('employeeId', $employee->id)->delete();
 
@@ -115,17 +127,17 @@ class EmployeeService
             $employee->delete();
         });
     }
-    public function deleteDeduction(int $storeId, int $employeeId): void
+
+    public function deleteDeductionByEmployeeId(int $storeId, int $employeeId): void
     {
         DB::transaction(function () use ($storeId, $employeeId) {
-            $employee = Employee::where('store_id', $storeId)
-                ->findOrFail($employeeId);
+            $employee = $this->findEmployeeInStore($storeId, $employeeId);
 
-            $deduction = Deduction::where('employeeId', $employee->id)
-                ->firstOrFail();
+            $deleted = Deduction::where('employeeId', $employee->id)->delete();
 
-            $deduction->delete();
+            if (!$deleted) {
+                throw new ModelNotFoundException('No deductions found for this employee.');
+            }
         });
     }
-   
 }
