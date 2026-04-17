@@ -2,75 +2,84 @@
 
 namespace App\Services\Api;
 
+use App\Models\Employee;
 use App\Models\EmployeeLoan;
 use App\Models\Loan;
-use Exception;
-
+use DomainException;
+use Illuminate\Support\Facades\DB;
+   use Carbon\Carbon;
 class EmployeeLoanService
 {
-    // ✅ STORE
-    public function create(array $data)
+    public function create(array $data): EmployeeLoan
     {
-        try {
+        return DB::transaction(function () use ($data) {
 
-            // ❌ Prevent multiple active loans for same employee
-            $exists = EmployeeLoan::where('employeeId', $data['employeeId'])
+            $employee = Employee::findOrFail($data['employeeId']);
+
+            // Prevent multiple active loans
+            $exists = EmployeeLoan::where('employeeId', $employee->id)
                 ->where('loanStatus', 'active')
+                ->whereNull('deleted_at')
+                ->lockForUpdate()
                 ->exists();
 
             if ($exists) {
-                throw new Exception('This employee already has an active loan.');
+                throw new DomainException('This employee already has an active loan.');
             }
- 
+
             $loan = Loan::findOrFail($data['loansId']);
- 
+
             return EmployeeLoan::create([
-                'employeeId'     => $data['employeeId'],
-                'loansId'        => $data['loansId'],
+                'employeeId'     => $employee->id,
+                'loansId'        => $loan->id,
                 'loanStatus'     => 'active',
                 'loanStartDate'  => now(),
                 'loanRentAmount' => $loan->loanAmountWithTax,
                 'createdBy'      => auth()->id(),
             ]);
- 
-        } catch (Exception $e) {
-            throw new Exception($e->getMessage());
-        }
+        });
     }
 
-    // ✅ INDEX (sorted)
-    public function getAll()
+    public function getAll(int $perPage = 10)
     {
         return EmployeeLoan::with(['employee', 'loan'])
             ->orderByDesc('loanRentAmount')
-            ->get();
+            ->paginate($perPage);
     }
 
-    // ✅ SHOW (with relations)
-    public function find($id)
+    public function find(int $id): EmployeeLoan
     {
         return EmployeeLoan::with(['employee', 'loan'])
             ->findOrFail($id);
     }
 
-  
-    //soft delete
-    public function softDelete($id, $reason)
+
+
+    public function softDelete(int $id, string $reason): void
     {
-        $record = EmployeeLoan::findOrFail($id);
+        DB::transaction(function () use ($id, $reason) {
 
-        if ($record->loanStatus === 'completed') {
-            throw new Exception('Cannot delete completed loan.');
-        }
+            $record = EmployeeLoan::findOrFail($id);
 
-        // ✅ assign values manually
-        $record->deletedBy = auth()->id();
-        $record->ReasonForDeletion = $reason;
+            // ❌ Cannot delete completed loan
+            if ($record->loanStatus === 'completed') {
+                throw new DomainException('Cannot delete completed loan.');
+            }
 
-        // ✅ save FIRST
-        $record->save();
+            // ❌ Allow delete ONLY on same day
+            $createdDate = Carbon::parse($record->created_at)->toDateString();
+            $today = now()->toDateString();
 
-        // ✅ then soft delete
-        $record->delete();
+            if ($createdDate !== $today) {
+                throw new DomainException('You can only delete the loan on the same day it was created.');
+            }
+
+            // ✅ proceed with delete
+            $record->deletedBy = auth()->id();
+            $record->ReasonForDeletion = $reason;
+            $record->save();
+
+            $record->delete();
+        });
     }
 }
