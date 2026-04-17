@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Tax extends Model
 {
     use SoftDeletes;
+
     protected $fillable = ['taxAmount', 'taxtype', 'createdBy', 'editedBy'];
 
     public function employeeTaxes()

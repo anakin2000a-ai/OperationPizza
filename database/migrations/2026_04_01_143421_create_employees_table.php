@@ -12,13 +12,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('employees', function (Blueprint $table) {
-        $table->unsignedBigInteger('id')->primary();
+        $table->id();
         $table->foreignId('store_id')->constrained()->restrictOnDelete();
 
-        $table->string('name')->nullable();
-        $table->string('phone')->nullable();
-        $table->string('email')->nullable();
-        $table->date('hire_date')->nullable();
+        $table->string('FirstName');
+        $table->string('LastName');
+        $table->boolean('HaveCar');
+        $table->string('phone');
+        $table->string('email');
+        $table->date('hire_date');
 
         $table->enum('status', ['termination', 'resignation', 'hired','OJE']);
 

@@ -12,11 +12,10 @@ return new class extends Migration
             $table->unsignedBigInteger('employeeId');
             $table->unsignedBigInteger('ApartmentId')->nullable(); // Foreign key for apartments
             $table->unsignedBigInteger('SimId')->nullable(); // Foreign key for sim
-            $table->unsignedBigInteger('createdBy');
-            $table->unsignedBigInteger('editedBy');
+            $table->unsignedBigInteger('createdBy')->nullable();
+            $table->unsignedBigInteger('editedBy')->nullable();
             $table->timestamps();
-            $table->softDeletes(); // For soft deletes
-
+ 
             // Foreign Key Constraints
             $table->foreign('employeeId')->references('id')->on('employees')->onDelete('restrict');
             $table->foreign('ApartmentId')->references('id')->on('apartments')->onDelete('set null');

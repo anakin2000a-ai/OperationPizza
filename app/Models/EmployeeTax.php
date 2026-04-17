@@ -4,18 +4,24 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
- 
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class EmployeeTax extends Model
 {
-    use HasFactory;
+    use HasFactory ;
+
+    // ✅ MUST match your migration table name
+    protected $table = 'employeetaxes';
 
     protected $fillable = [
-        'employeeId', 'taxesId', 'createdBy', 'editedBy'
+        'employeeId',
+        'taxesId',
+        'createdBy',
+        'editedBy'
     ];
 
     /**
-     * Relationship with the Employee model.
+     * Employee relationship
      */
     public function employee()
     {
@@ -23,7 +29,7 @@ class EmployeeTax extends Model
     }
 
     /**
-     * Relationship with the Tax model.
+     * Tax relationship
      */
     public function tax()
     {
@@ -31,13 +37,16 @@ class EmployeeTax extends Model
     }
 
     /**
-     * Relationship with the User model (for createdBy and editedBy).
+     * Created By User
      */
     public function createdByUser()
     {
         return $this->belongsTo(User::class, 'createdBy');
     }
 
+    /**
+     * Edited By User
+     */
     public function editedByUser()
     {
         return $this->belongsTo(User::class, 'editedBy');

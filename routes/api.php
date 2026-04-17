@@ -14,3 +14,4 @@ require __DIR__ . '/api/sim.php';
 require __DIR__ . '/api/tax.php';
 require __DIR__ . '/api/loans.php';
 require __DIR__ . '/api/employeeLoans.php';
+require __DIR__ . '/api/employees.php';

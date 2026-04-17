@@ -5,6 +5,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class TrackerDetail extends Model
 {
+    
     protected $fillable = [
         'trackerId', 'employeeId', 'respect', 'uniforms', 'commitmentToAttend', 
         'performance', 'finalResult', 'date'

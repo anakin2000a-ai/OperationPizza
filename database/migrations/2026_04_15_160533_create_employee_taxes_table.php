@@ -11,10 +11,9 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('employeeId')->nullable(); // Allow null for employeeId
             $table->unsignedBigInteger('taxesId')->nullable(); // Allow null for taxesId
-            $table->unsignedBigInteger('createdBy');
-            $table->unsignedBigInteger('editedBy');
+            $table->unsignedBigInteger('createdBy')->nullable();
+            $table->unsignedBigInteger('editedBy')->nullable();
             $table->timestamps();
-            $table->softDeletes(); // For soft deletes
 
             // Foreign Key Constraints
             $table->foreign('employeeId')->references('id')->on('employees')->onDelete('set null');
