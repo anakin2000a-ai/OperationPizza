@@ -1,24 +1,26 @@
 <?php
+
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class SimRequestStore extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return auth()->check();
     }
 
     public function rules(): array
     {
         return [
-            'SimCardType' => 'required|unique:sims,SimCardType,' . $this->route('sim') . '|regex:/^[a-z]+$/',  // Ensure lowercase and no spaces
-            'simCardInstallment' => 'required|numeric|min:5|max:40',  // Validate simCardInstallment
+            'SimCardType' => ['required', 'string', 'regex:/^[a-z]+$/', 'max:255', Rule::unique('sims', 'SimCardType')],
+            'simCardInstallment' => ['required', 'numeric', 'min:5', 'max:40'],
         ];
     }
 
-    public function messages()
+    public function messages(): array
     {
         return [
             'SimCardType.required' => 'SimCardType is required and must be lowercase with no spaces.',
@@ -31,13 +33,11 @@ class SimRequestStore extends FormRequest
         ];
     }
 
-    // Modify the SimCardType attribute before validation
-    protected function prepareForValidation()
+    protected function prepareForValidation(): void
     {
-        // Remove spaces and convert the SimCardType to lowercase
         if ($this->has('SimCardType')) {
             $this->merge([
-                'SimCardType' => strtolower(str_replace(' ', '', $this->SimCardType)),
+                'SimCardType' => strtolower(str_replace(' ', '', (string) $this->SimCardType)),
             ]);
         }
     }

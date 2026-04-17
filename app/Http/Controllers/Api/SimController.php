@@ -1,89 +1,197 @@
 <?php
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SimRequestStore;
 use App\Http\Requests\SimRequestUpdate;
 use App\Services\Api\SimService;
-use Illuminate\Http\Request;
-use Exception;
+use DomainException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class SimController extends Controller
 {
-    protected $simService;
-
-    public function __construct(SimService $simService)
+    public function __construct(protected SimService $simService)
     {
-        $this->simService = $simService;
     }
 
-    // Store a new SIM card
-    public function store(SimRequestStore $request)
+    public function store(SimRequestStore $request): JsonResponse
     {
         try {
             $data = $request->validated();
-            $data['createdBy'] = auth()->id();  // Set createdBy with authenticated user's ID
+            $data['createdBy'] = auth()->id();
+
             $sim = $this->simService->create($data);
-            return response()->json(['message' => 'SIM card created successfully!', 'data' => $sim], 201);
-        } catch (Exception $e) {
-            return response()->json(['message' => 'Error creating SIM card', 'error' => $e->getMessage()], 500);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'SIM card created successfully!',
+                'data' => $sim,
+            ], 201);
+
+        } catch (Throwable $e) {
+            Log::error('Error creating SIM card', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error creating SIM card',
+            ], 500);
         }
     }
 
-    // Update an existing SIM card
-    public function update(SimRequestUpdate $request, $id)
+    public function update(SimRequestUpdate $request, int $id): JsonResponse
     {
         try {
             $data = $request->validated();
-            $data['editedBy'] = auth()->id();  // Set editedBy with authenticated user's ID
+            $data['editedBy'] = auth()->id();
+
             $sim = $this->simService->update($id, $data);
-            return response()->json(['message' => 'SIM card updated successfully!', 'data' => $sim], 200);
-        } catch (Exception $e) {
-            return response()->json(['message' => 'Error updating SIM card', 'error' => $e->getMessage()], 500);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'SIM card updated successfully!',
+                'data' => $sim,
+            ]);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'SIM card not found',
+            ], 404);
+        } catch (Throwable $e) {
+            Log::error('Error updating SIM card', [
+                'user_id' => auth()->id(),
+                'sim_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error updating SIM card',
+            ], 500);
         }
     }
 
-    // Index method to list all SIM cards
-    public function index()
+    public function index(): JsonResponse
     {
         try {
-            $sims = $this->simService->index();
-            return response()->json(['data' => $sims], 200);
-        } catch (Exception $e) {
-            return response()->json(['message' => 'Error fetching SIM cards', 'error' => $e->getMessage()], 500);
+            $perPage = min((int) request('per_page', 10), 50);
+            $sims = $this->simService->index($perPage);
+
+            return response()->json([
+                'success' => true,
+                'data' => $sims,
+            ]);
+        } catch (Throwable $e) {
+            Log::error('Error fetching SIM cards', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching SIM cards',
+            ], 500);
         }
     }
 
-    // Soft delete a SIM card
-    public function destroy($id)
+    public function destroy(int $id): JsonResponse
     {
         try {
             $this->simService->softDelete($id);
-            return response()->json(['message' => 'SIM card soft-deleted successfully!'], 200);
-        } catch (Exception $e) {
-            return response()->json(['message' => 'Error deleting SIM card', 'error' => $e->getMessage()], 500);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'SIM card soft-deleted successfully!',
+            ]);
+        } catch (DomainException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'SIM card not found',
+            ], 404);
+        } catch (Throwable $e) {
+            Log::error('Error deleting SIM card', [
+                'user_id' => auth()->id(),
+                'sim_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error deleting SIM card',
+            ], 500);
         }
     }
 
-    // Force delete a SIM card
-    public function forceDelete($id)
+    public function forceDelete(int $id): JsonResponse
     {
         try {
             $this->simService->forceDelete($id);
-            return response()->json(['message' => 'SIM card permanently deleted!'], 200);
-        } catch (Exception $e) {
-            return response()->json(['message' => 'Error force-deleting SIM card', 'error' => $e->getMessage()], 500);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'SIM card permanently deleted!',
+            ]);
+        } catch (DomainException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'SIM card not found',
+            ], 404);
+        } catch (Throwable $e) {
+            Log::error('Error force-deleting SIM card', [
+                'user_id' => auth()->id(),
+                'sim_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error force-deleting SIM card',
+            ], 500);
         }
     }
 
-    // Restore a SIM card
-    public function restore($id)
+    public function restore(int $id): JsonResponse
     {
         try {
-            $this->simService->restore($id);
-            return response()->json(['message' => 'SIM card restored successfully!'], 200);
-        } catch (Exception $e) {
-            return response()->json(['message' => 'Error restoring SIM card', 'error' => $e->getMessage()], 500);
+            $sim = $this->simService->restore($id);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'SIM card restored successfully!',
+                'data' => $sim,
+            ]);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'SIM card not found',
+            ], 404);
+        } catch (Throwable $e) {
+            Log::error('Error restoring SIM card', [
+                'user_id' => auth()->id(),
+                'sim_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error restoring SIM card',
+            ], 500);
         }
     }
 }

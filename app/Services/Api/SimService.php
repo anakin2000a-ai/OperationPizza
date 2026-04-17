@@ -1,78 +1,72 @@
 <?php
+
 namespace App\Services\Api;
 
+use App\Models\Deduction;
 use App\Models\Sim;
-use Exception;
+use DomainException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\DB;
 
 class SimService
 {
-    // Create a new SIM card
-    public function create(array $data)
+    public function create(array $data): Sim
     {
-        try {
+        return DB::transaction(function () use ($data) {
             return Sim::create($data);
-        } catch (Exception $e) {
-            throw new Exception('Error creating SIM card: ' . $e->getMessage());
-        }
+        });
     }
 
-    // Update an existing SIM card
-    public function update($id, array $data)
+    public function update(int $id, array $data): Sim
     {
-        try {
+        return DB::transaction(function () use ($id, $data) {
             $sim = Sim::findOrFail($id);
-            
-            // Ensure the SimCardType isn't changed if it already exists
-            if ($sim->SimCardType !== $data['SimCardType']) {
-                $sim->SimCardType = $data['SimCardType'];
-            }
             $sim->update($data);
-            return $sim;
-        } catch (Exception $e) {
-            throw new Exception('Error updating SIM card: ' . $e->getMessage());
-        }
+
+            return $sim->fresh();
+        });
     }
 
-    // List all SIM cards sorted by ID
-    public function index()
+    public function index(int $perPage = 10)
     {
-        try {
-            return Sim::orderBy('id')->get();
-        } catch (Exception $e) {
-            throw new Exception('Error fetching SIM cards: ' . $e->getMessage());
-        }
+        return Sim::orderBy('id')->paginate($perPage);
     }
 
-    // Soft delete a SIM card
-    public function softDelete($id)
+    public function softDelete(int $id): void
     {
-        try {
+        DB::transaction(function () use ($id) {
             $sim = Sim::findOrFail($id);
+
+            $isUsed = Deduction::where('SimId', $id)->exists();
+            if ($isUsed) {
+                throw new DomainException('Cannot delete SIM because it is assigned to an employee deduction.');
+            }
+
             $sim->delete();
-        } catch (Exception $e) {
-            throw new Exception('Error deleting SIM card: ' . $e->getMessage());
-        }
+        });
     }
 
-    // Force delete a SIM card
-    public function forceDelete($id)
+    public function forceDelete(int $id): void
     {
-        try {
+        DB::transaction(function () use ($id) {
             $sim = Sim::withTrashed()->findOrFail($id);
+
+            $isUsed = Deduction::where('SimId', $id)->exists();
+            if ($isUsed) {
+                throw new DomainException('Cannot permanently delete SIM because it is assigned to an employee deduction.');
+            }
+
             $sim->forceDelete();
-        } catch (Exception $e) {
-            throw new Exception('Error force-deleting SIM card: ' . $e->getMessage());
-        }
+        });
     }
 
-    // Restore a soft-deleted SIM card
-    public function restore($id)
+    public function restore(int $id): Sim
     {
-        try {
+        return DB::transaction(function () use ($id) {
             $sim = Sim::withTrashed()->findOrFail($id);
             $sim->restore();
-        } catch (Exception $e) {
-            throw new Exception('Error restoring SIM card: ' . $e->getMessage());
-        }
+
+            return $sim->fresh();
+        });
     }
 }
