@@ -1,94 +1,111 @@
 <?php
+
 namespace App\Services\Api;
 
+use App\Models\EmployeeLoan;
 use App\Models\Loan;
-use Exception;
+use DomainException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\DB;
 
 class LoanService
 {
-    // Create a new loan
-    public function create(array $data)
+    public function create(array $data): Loan
     {
-        try {
-            // Calculate loanAmountWithTax
-            $loanAmountWithTax = $data['loanAmount'] + ($data['loanAmount'] * ($data['taxValue'] / 100));
+        return DB::transaction(function () use ($data) {
+            $data['loanAmountWithTax'] = $this->calculateLoanAmountWithTax(
+                $data['loanAmount'],
+                $data['taxValue']
+            );
 
-            // Add loanAmountWithTax to the data array
-            $data['loanAmountWithTax'] = $loanAmountWithTax;
+            $data['createdBy'] = auth()->id();
 
-            // Create the loan using the data passed from the controller
-            $loan = Loan::create($data);
-            return $loan;
-        } catch (Exception $e) {
-            throw new Exception('Error creating loan: ' . $e->getMessage());
-        }
+            return Loan::create($data);
+        });
     }
 
-    // Find a loan by ID
-    public function find($id)
+    public function find(int $id): Loan
     {
-        try {
-            return Loan::findOrFail($id);
-        } catch (Exception $e) {
-            throw new Exception('Loan not found: ' . $e->getMessage());
-        }
+        return Loan::findOrFail($id);
     }
 
-    // Update a loan
-    public function update($id, array $data)
+    public function update(int $id, array $data): Loan
     {
-        try {
+        return DB::transaction(function () use ($id, $data) {
             $loan = Loan::findOrFail($id);
+
+            $loanAmount = $data['loanAmount'] ?? $loan->loanAmount;
+            $taxValue = $data['taxValue'] ?? $loan->taxValue;
+
+            $data['loanAmountWithTax'] = $this->calculateLoanAmountWithTax(
+                $loanAmount,
+                $taxValue
+            );
+
+            $data['editedBy'] = auth()->id();
+
             $loan->update($data);
-            $loan->loanAmountWithTax = $loan->loanAmount + ($loan->loanAmount * ($loan->taxValue / 100));  // Recalculate loanAmountWithTax
-            $loan->save();
-            return $loan;
-        } catch (Exception $e) {
-            throw new Exception('Error updating loan: ' . $e->getMessage());
-        }
+
+            return $loan->fresh();
+        });
     }
 
-    // Get all loans sorted by loanAmountWithTax
-    public function getAllSortedByLoanAmountWithTax()
+    public function getAllSortedByLoanAmountWithTax(int $perPage = 10)
     {
-        try {
-            return Loan::orderByDesc('loanAmountWithTax')->get();
-        } catch (Exception $e) {
-            throw new Exception('Error fetching loans: ' . $e->getMessage());
-        }
+        return Loan::orderByDesc('loanAmountWithTax')->paginate($perPage);
     }
 
-    // Soft delete a loan
-    public function softDelete($id)
+    public function softDelete(int $id): void
     {
-        try {
+        DB::transaction(function () use ($id) {
             $loan = Loan::findOrFail($id);
+
+            $isUsed = EmployeeLoan::withTrashed()
+                ->where('loansId', $id)
+                ->exists();
+
+            if ($isUsed) {
+                throw new DomainException('Cannot delete loan because it is assigned to employees.');
+            }
+
             $loan->delete();
-        } catch (Exception $e) {
-            throw new Exception('Error deleting loan: ' . $e->getMessage());
-        }
+        });
     }
 
-    // Restore a soft-deleted loan
-    public function restore($id)
+    public function restore(int $id): Loan
     {
-        try {
+        return DB::transaction(function () use ($id) {
             $loan = Loan::withTrashed()->findOrFail($id);
+
+            if (!$loan->trashed()) {
+                throw new DomainException('Loan is not deleted.');
+            }
+
             $loan->restore();
-            return $loan;
-        } catch (Exception $e) {
-            throw new Exception('Error restoring loan: ' . $e->getMessage());
-        }
+
+            return $loan->fresh();
+        });
     }
 
-    // Permanently delete a loan
-    public function forceDelete($id)
+    public function forceDelete(int $id): void
     {
-        try {
+        DB::transaction(function () use ($id) {
             $loan = Loan::withTrashed()->findOrFail($id);
+
+            $isUsed = EmployeeLoan::withTrashed()
+                ->where('loansId', $id)
+                ->exists();
+
+            if ($isUsed) {
+                throw new DomainException('Cannot permanently delete loan because it is assigned to employees.');
+            }
+
             $loan->forceDelete();
-        } catch (Exception $e) {
-            throw new Exception('Error permanently deleting loan: ' . $e->getMessage());
-        }
+        });
+    }
+
+    private function calculateLoanAmountWithTax(float|int $loanAmount, float|int $taxValue): float
+    {
+        return (float) ($loanAmount + ($loanAmount * ($taxValue / 100)));
     }
 }
