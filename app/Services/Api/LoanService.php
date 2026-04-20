@@ -5,7 +5,6 @@ namespace App\Services\Api;
 use App\Models\EmployeeLoan;
 use App\Models\Loan;
 use DomainException;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 
 class LoanService
@@ -52,6 +51,8 @@ class LoanService
 
     public function getAllSortedByLoanAmountWithTax(int $perPage = 10)
     {
+        $perPage = min(max($perPage, 1), 50);
+
         return Loan::orderByDesc('loanAmountWithTax')->paginate($perPage);
     }
 

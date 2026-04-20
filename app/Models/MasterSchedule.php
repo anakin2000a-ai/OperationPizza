@@ -32,4 +32,8 @@ class MasterSchedule extends Model
     {
         return $this->hasMany(Schedule::class, 'schedule_week_id');
     }
+    public function trackerSchedule()
+    {
+        return $this->hasOne(TrackerSchedule::class, 'scheduleWeekId');
+    }
 }

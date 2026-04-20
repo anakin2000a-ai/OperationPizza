@@ -11,6 +11,8 @@ use App\Models\DayOff;
 use App\Models\Availability;
 use App\Models\Schedule;
 use App\Models\Skill;
+use App\Models\TrackerDetail;
+use App\Models\TrackerSchedule;
 
 class MasterScheduleService
 {
@@ -63,24 +65,70 @@ class MasterScheduleService
     
     
 
-     public function getAllPaginated(int $perPage = 10, int $storeId = null)
+    public function getAllPaginated(int $perPage = 10, int $storeId = null)
     {
-        return MasterSchedule::with('schedules')
+        $data = MasterSchedule::with([
+                'schedules.employee',
+                'trackerSchedule.trackerDetails'
+            ])
             ->when($storeId, function ($q) use ($storeId) {
                 $q->where('store_id', $storeId);
             })
             ->orderBy('store_id')
             ->orderBy('start_date')
             ->paginate($perPage);
-    }
 
+        // 🔥 Transform structure
+      $data->getCollection()->transform(function ($master) {
+
+        $trackerDetails = optional($master->trackerSchedule)->trackerDetails ?? collect();
+
+        $master->schedules->transform(function ($schedule) use ($trackerDetails) {
+
+            $employeeId = $schedule->employee_id;
+
+            // attach trackers directly to employee
+            $schedule->employee->trackers = $trackerDetails
+                ->where('employeeId', $employeeId) // ✅ FIX HERE
+                ->values();
+
+            return $schedule;
+    });
+
+    // optional: remove tracker_schedule from response
+    unset($master->tracker_schedule);
+
+    return $master;
+    });
+
+        return $data;
+    }
     public function getById(int $id, int $storeId = null): MasterSchedule
     {
-        return MasterSchedule::with('schedules')
+        $record = MasterSchedule::with([
+                'schedules.employee',
+                'trackerSchedule.trackerDetails',
+            ])
             ->when($storeId, function ($q) use ($storeId) {
                 $q->where('store_id', $storeId);
             })
             ->findOrFail($id);
+
+        $trackerDetails = optional($record->trackerSchedule)->trackerDetails ?? collect();
+
+        $record->schedules->transform(function ($schedule) use ($trackerDetails) {
+            if ($schedule->employee) {
+                $schedule->employee->trackers = $trackerDetails
+                    ->where('employeeId', $schedule->employee_id)
+                    ->values();
+            }
+
+            return $schedule;
+        });
+
+        unset($record->tracker_schedule);
+
+        return $record;
     }
 
     public function storeWithSchedules(array $data, int $userId): MasterSchedule
@@ -111,6 +159,13 @@ class MasterScheduleService
                 'published' => false,
                 'created_by' => $userId,
             ]);
+            try {
+                TrackerSchedule::create([
+                    'scheduleWeekId' => $master->id,
+                ]);
+            } catch (\Throwable $e) {
+                dd($e->getMessage());
+            } 
 
             foreach ($data['schedules'] as $schedule) {
                 $master->schedules()->create([
@@ -186,7 +241,9 @@ class MasterScheduleService
 
                     if (isset($schedule['id']) && $existingSchedules->has($schedule['id'])) {
 
-                        $existingSchedules[$schedule['id']]->update([
+                        $updatedSchedule = $existingSchedules[$schedule['id']];
+
+                        $updatedSchedule->update([
                             'employee_id' => $schedule['employee_id'] ?? null,
                             'date' => $schedule['date'],
                             'start_time' => $schedule['start_time'],
@@ -196,10 +253,36 @@ class MasterScheduleService
                             'skill_id' => $schedule['skill_id'],
                             'edited_by' => $userId,
                         ]);
+
+                        if (
+                            !empty($schedule['actual_start_time']) &&
+                            !empty($schedule['actual_end_time']) &&
+                            !empty($schedule['employee_id'])
+                        ) {
+                            $tracker = TrackerSchedule::where('scheduleWeekId', $master->id)->first();
+
+                            if ($tracker) {
+                                $score = $this->calculateScore($schedule);
+                                TrackerDetail::updateOrCreate(
+                                    [
+                                        'trackerId' => $tracker->id,
+                                        'employeeId' => $schedule['employee_id'],
+                                        'date' => $schedule['date'],
+                                    ],
+                                    [
+                                        'respect' => $schedule['respect'],
+                                        'uniforms' => $schedule['uniforms'],
+                                        'commitmentToAttend' => $schedule['commitmentToAttend'],
+                                        'performance' => $schedule['performance'],
+                                        'finalResult' => $score,
+                                    ]
+                                );
+                            }
+                        }
 
                     } else {
 
-                        $master->schedules()->create([
+                        $newSchedule = $master->schedules()->create([
                             'employee_id' => $schedule['employee_id'] ?? null,
                             'date' => $schedule['date'],
                             'start_time' => $schedule['start_time'],
@@ -209,12 +292,57 @@ class MasterScheduleService
                             'skill_id' => $schedule['skill_id'],
                             'edited_by' => $userId,
                         ]);
+
+                        if (
+                            !empty($schedule['actual_start_time']) &&
+                            !empty($schedule['actual_end_time']) &&
+                            !empty($schedule['employee_id'])
+                        ) {
+                            $tracker = TrackerSchedule::where('scheduleWeekId', $master->id)->first();
+
+                            if ($tracker) {
+                                $score = $this->calculateScore($schedule);
+                                TrackerDetail::updateOrCreate(
+                                    [
+                                        'trackerId' => $tracker->id,
+                                        'employeeId' => $schedule['employee_id'],
+                                        'date' => $schedule['date'],
+                                    ],
+                                    [
+                                        'respect' => $schedule['respect'],
+                                        'uniforms' => $schedule['uniforms'],
+                                        'commitmentToAttend' => $schedule['commitmentToAttend'],
+                                        'performance' => $schedule['performance'],
+                                        'finalResult' => $score,
+                                    ]
+                                );
+                            }
+                        }
                     }
                 }
             }
 
             return $master->load('schedules');
         });
+    }
+    public function calculateScore(array $data): int
+    {
+        $fields = [
+            'respect',
+            'uniforms',
+            'commitmentToAttend',
+            'performance',
+        ];
+
+        $score = 0;
+
+        foreach ($fields as $field) {
+            if (!empty($data[$field])) {
+                $score += 25;
+            }
+        }
+
+        return $score;
     }
 
     public function publish(MasterSchedule $master, int $userId): MasterSchedule
@@ -279,16 +407,28 @@ class MasterScheduleService
     public function delete(MasterSchedule $master): void
     {
         DB::transaction(function () use ($master) {
-            $master->schedules()->delete(); // soft delete schedules
-            $master->delete(); // soft delete master
+
+            // 1. delete tracker details
+            if ($master->trackerSchedule) {
+                $master->trackerSchedule->trackerDetails()->delete();
+            }
+
+            // 2. delete tracker schedule
+            if ($master->trackerSchedule) {
+                $master->trackerSchedule->delete();
+            }
+
+            // 3. delete schedules
+            $master->schedules()->delete();
+
+            // 4. delete master
+            $master->delete();
         });
     }
     public function restore(int $id, int $storeId = null): MasterSchedule
     {
         $master = MasterSchedule::withTrashed()
-            ->when($storeId, function ($q) use ($storeId) {
-                $q->where('store_id', $storeId);
-            })
+            ->when($storeId, fn($q) => $q->where('store_id', $storeId))
             ->findOrFail($id);
 
         if (!$master->trashed()) {
@@ -298,28 +438,58 @@ class MasterScheduleService
         }
 
         DB::transaction(function () use ($master) {
+
+            // 1. restore master
             $master->restore();
+
+            // 2. restore schedules
             $master->schedules()->withTrashed()->restore();
+
+            // 3. restore tracker schedule
+            if ($master->trackerSchedule()->withTrashed()->exists()) {
+                $tracker = $master->trackerSchedule()->withTrashed()->first();
+
+                $tracker->restore();
+
+                // 4. restore tracker details
+                $tracker->trackerDetails()->withTrashed()->restore();
+            }
         });
 
-        return $master->load('schedules');
+        return $master->load([
+            'schedules.employee',
+            'trackerSchedule.trackerDetails'
+        ]);
     }
-   public function forceDelete(int $id, int $storeId = null): void
+    public function forceDelete(int $id, int $storeId = null): void
     {
         $master = MasterSchedule::withTrashed()
-            ->when($storeId, function ($q) use ($storeId) {
-                $q->where('store_id', $storeId);
-            })
+            ->when($storeId, fn($q) => $q->where('store_id', $storeId))
             ->findOrFail($id);
 
         if (!$master->trashed()) {
             throw ValidationException::withMessages([
-                'force_delete' => ['You must delete the record first before force deleting.']
+                'force_delete' => ['You must delete first']
             ]);
         }
 
         DB::transaction(function () use ($master) {
+
+            if ($master->trackerSchedule()->withTrashed()->exists()) {
+
+                $tracker = $master->trackerSchedule()->withTrashed()->first();
+
+                // 1. delete tracker details
+                $tracker->trackerDetails()->withTrashed()->forceDelete();
+
+                // 2. delete tracker schedule
+                $tracker->forceDelete();
+            }
+
+            // 3. delete schedules
             $master->schedules()->withTrashed()->forceDelete();
+
+            // 4. delete master
             $master->forceDelete();
         });
     }
@@ -412,7 +582,9 @@ class MasterScheduleService
 
         return $dates;
     }
-   public function copySchedule(array $data, int $userId): MasterSchedule
+   
+   
+    public function copySchedule(array $data, int $userId): MasterSchedule
     {
         return DB::transaction(function () use ($data, $userId) {
 
@@ -619,7 +791,8 @@ class MasterScheduleService
             }
         }
     }
- 
+
+    
 
     private function validateEmployeeAvailability(array $schedules): void
     {

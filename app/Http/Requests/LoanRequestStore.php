@@ -22,27 +22,28 @@ class LoanRequestStore extends FormRequest
                 'numeric',
                 function ($attribute, $value, $fail) {
                     $loanType = $this->input('loanType');
+                    $amount = (float) $value;
 
                     if ($loanType === 'phone') {
-                        $allowed = [250, 500, 750, 1000, 1250, 1500];
+                        $allowed = [250.0, 500.0, 750.0, 1000.0, 1250.0, 1500.0];
 
-                        if (!in_array((float) $value, $allowed, true)) {
+                        if (!in_array($amount, $allowed, true)) {
                             $fail('Phone loans must be one of: 250, 500, 750, 1000, 1250, 1500.');
                             return;
                         }
                     }
 
                     if ($loanType === 'car') {
-                        $allowed = [2500, 5000, 7500, 10000];
+                        $allowed = [2500.0, 5000.0, 7500.0, 10000.0];
 
-                        if (!in_array((float) $value, $allowed, true)) {
+                        if (!in_array($amount, $allowed, true)) {
                             $fail('Car loans must be one of: 2500, 5000, 7500, 10000.');
                             return;
                         }
                     }
 
                     $exists = Loan::where('loanType', $loanType)
-                        ->where('loanAmount', $value)
+                        ->where('loanAmount', $amount)
                         ->exists();
 
                     if ($exists) {

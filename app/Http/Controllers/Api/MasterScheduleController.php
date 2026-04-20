@@ -48,9 +48,10 @@ class MasterScheduleController extends Controller
                 'success' => true,
                 'data' => $data,
             ]);
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'message' => 'Failed to fetch data',
+                'error' => $e->getMessage(), // 👈 ADD THIS
             ], 500);
         }
     }

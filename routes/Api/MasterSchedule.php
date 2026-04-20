@@ -19,6 +19,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('master-schedules/{id}', [MasterScheduleController::class, 'softDelete']);//soft delete master schedule
         Route::post('master-schedules/{id}/restore', [MasterScheduleController::class, 'restore']);//restore master schedule
         Route::delete('master-schedules/{id}/force', [MasterScheduleController::class, 'forceDelete']);//force delete master schedule
+
+        
         Route::delete('schedules/delete/{id}', [MasterScheduleController::class, 'deleteSchedule']);
         Route::post('schedules/delete/{id}/restore', [MasterScheduleController::class, 'restoreSchedule']);
         Route::delete('schedules/delete/{id}/force', [MasterScheduleController::class, 'forceDeleteSchedule']);

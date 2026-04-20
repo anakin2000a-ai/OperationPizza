@@ -8,13 +8,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('tracker_schedule', function (Blueprint $table) {
-            $table->unsignedBigInteger('id')->primary();
+            $table->id();
             $table->unsignedBigInteger('scheduleWeekId');  // Foreign Key for master_schedule
             $table->timestamps();
             $table->softDeletes(); // For soft deletes
 
             // Foreign Key Constraints
-            $table->foreign('scheduleWeekId')->references('id')->on('master_schedule')->onDelete('restrict');
+            $table->foreign('scheduleWeekId')->references('id')->on('master_schedule')->onDelete('cascade');
         });
     }
 

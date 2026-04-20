@@ -19,11 +19,35 @@ class LoanController extends Controller
     ) {
     }
 
+    public function index(): JsonResponse
+    {
+        try {
+            $perPage = min(max((int) request('per_page', 10), 1), 50);
+
+            $loans = $this->loanService->getAllSortedByLoanAmountWithTax($perPage);
+
+            return response()->json([
+                'success' => true,
+                'data' => $loans,
+            ], 200);
+
+        } catch (Throwable $e) {
+            Log::error('Error fetching loans', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching loans',
+            ], 500);
+        }
+    }
+
     public function store(LoanRequestStore $request): JsonResponse
     {
         try {
-            $data = $request->validated();
-            $loan = $this->loanService->create($data);
+            $loan = $this->loanService->create($request->validated());
 
             return response()->json([
                 'success' => true,
@@ -51,17 +75,46 @@ class LoanController extends Controller
         }
     }
 
+    public function show(int $id): JsonResponse
+    {
+        try {
+            $loan = $this->loanService->find($id);
+
+            return response()->json([
+                'success' => true,
+                'data' => $loan,
+            ], 200);
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Loan not found',
+            ], 404);
+
+        } catch (Throwable $e) {
+            Log::error('Error fetching loan', [
+                'user_id' => auth()->id(),
+                'loan_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching loan',
+            ], 500);
+        }
+    }
+
     public function update(LoanRequestUpdate $request, int $id): JsonResponse
     {
         try {
-            $data = $request->validated();
-            $loan = $this->loanService->update($id, $data);
+            $loan = $this->loanService->update($id, $request->validated());
 
             return response()->json([
                 'success' => true,
                 'message' => 'Loan updated successfully!',
                 'data' => $loan,
-            ]);
+            ], 200);
 
         } catch (ModelNotFoundException $e) {
             return response()->json([
@@ -90,60 +143,6 @@ class LoanController extends Controller
         }
     }
 
-    public function show(int $id): JsonResponse
-    {
-        try {
-            $loan = $this->loanService->find($id);
-
-            return response()->json([
-                'success' => true,
-                'data' => $loan,
-            ]);
-
-        } catch (ModelNotFoundException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Loan not found',
-            ], 404);
-
-        } catch (Throwable $e) {
-            Log::error('Error fetching loan', [
-                'user_id' => auth()->id(),
-                'loan_id' => $id,
-                'error' => $e->getMessage(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Error fetching loan',
-            ], 500);
-        }
-    }
-
-    public function index(): JsonResponse
-    {
-        try {
-            $perPage = min((int) request('per_page', 10), 50);
-            $loans = $this->loanService->getAllSortedByLoanAmountWithTax($perPage);
-
-            return response()->json([
-                'success' => true,
-                'data' => $loans,
-            ]);
-
-        } catch (Throwable $e) {
-            Log::error('Error fetching loans', [
-                'user_id' => auth()->id(),
-                'error' => $e->getMessage(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Error fetching loans',
-            ], 500);
-        }
-    }
-
     public function destroy(int $id): JsonResponse
     {
         try {
@@ -152,7 +151,7 @@ class LoanController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Loan soft deleted successfully!',
-            ]);
+            ], 200);
 
         } catch (ModelNotFoundException $e) {
             return response()->json([
@@ -189,7 +188,7 @@ class LoanController extends Controller
                 'success' => true,
                 'message' => 'Loan restored successfully!',
                 'data' => $loan,
-            ]);
+            ], 200);
 
         } catch (ModelNotFoundException $e) {
             return response()->json([
@@ -225,7 +224,7 @@ class LoanController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Loan permanently deleted!',
-            ]);
+            ], 200);
 
         } catch (ModelNotFoundException $e) {
             return response()->json([

@@ -78,7 +78,11 @@ class UpdateMasterScheduleRequest extends FormRequest
             'schedules.*.actual_end_time' => ['nullable', 'date_format:H:i'],
 
             'schedules.*.skill_id' => ['required_with:schedules', 'exists:skills,id'],
-        ];
+            'schedules.*.respect' => 'required_with:schedules.*.actual_start_time,schedules.*.actual_end_time|boolean',
+            'schedules.*.uniforms' => 'required_with:schedules.*.actual_start_time,schedules.*.actual_end_time|boolean',
+            'schedules.*.commitmentToAttend' => 'required_with:schedules.*.actual_start_time,schedules.*.actual_end_time|boolean',
+            'schedules.*.performance' => 'required_with:schedules.*.actual_start_time,schedules.*.actual_end_time|boolean',
+             ];
     }
 
     public function withValidator($validator): void
