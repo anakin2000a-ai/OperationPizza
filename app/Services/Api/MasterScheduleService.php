@@ -263,8 +263,9 @@ class MasterScheduleService
                             !empty($schedule['actual_end_time']) &&
                             !empty($schedule['employee_id'])
                         ) {
+                            
                             $tracker = TrackerSchedule::where('scheduleWeekId', $master->id)->first();
-
+                    
                             if ($tracker) {
                                 $score = $this->calculateScore($schedule);
                                 TrackerDetail::updateOrCreate(
@@ -279,6 +280,8 @@ class MasterScheduleService
                                         'commitmentToAttend' => $schedule['commitmentToAttend'],
                                         'performance' => $schedule['performance'],
                                         'finalResult' => $score,
+                                        'moneyOwed' => $schedule['moneyOwed'] ?? 0,
+                                        'ReasonForMoneyOwed' => $schedule['ReasonForMoneyOwed'] ?? null,
                                     ]
                                 );
                             }
@@ -318,6 +321,8 @@ class MasterScheduleService
                                         'commitmentToAttend' => $schedule['commitmentToAttend'],
                                         'performance' => $schedule['performance'],
                                         'finalResult' => $score,
+                                        'moneyOwed' => $schedule['moneyOwed'] ?? 0,
+                                        'ReasonForMoneyOwed' => $schedule['ReasonForMoneyOwed'] ?? null,
                                     ]
                                 );
                             }
