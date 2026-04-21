@@ -23,6 +23,8 @@ return new class extends Migration
         $table->date('hire_date');
 
         $table->enum('status', ['termination', 'resignation', 'hired','OJE']);
+        $table->enum('Nationality', ['American', 'Foreigner']);
+        $table->enum('position', ['CrowMember', 'assistantManager', 'shiftManager']);
 
         $table->timestamps();
      });

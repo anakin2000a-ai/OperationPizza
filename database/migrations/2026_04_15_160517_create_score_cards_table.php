@@ -14,6 +14,8 @@ return new class extends Migration
             $table->float('totalHoursWorked');
             $table->float('trackerScore');
             $table->float('finalSalary');
+            $table->enum('ScoreCardStatus', ['paid', 'pending'])->default('pending');
+
             $table->timestamps();
             $table->softDeletes(); // For soft deletes
 

@@ -22,7 +22,7 @@ class MasterScheduleService
     {
         $this->service = $service;
     }
-   public function initScheduling(array $data): array
+    public function initScheduling(array $data): array
     {
         $publishedSchedule = $this->service
             ->getPublishedFlexibleQuery($data)
@@ -186,8 +186,6 @@ class MasterScheduleService
 
     public function updateWithSchedules(MasterSchedule $master, array $data, ?int $userId = null): MasterSchedule
     {
-         
-
         return DB::transaction(function () use ($master, $data, $userId) {
 
             $storeId = $data['store_id'] ?? $master->store_id;
@@ -229,13 +227,19 @@ class MasterScheduleService
                 $existingSchedules = $master->schedules()->get()->keyBy('id');
 
                 $incomingIds = collect($data['schedules'])
-                    ->pluck('id')
-                    ->filter()
-                    ->toArray();
+                ->pluck('id')
+                ->filter()
+                ->values()
+                ->toArray();
 
-                $master->schedules()
-                    ->whereNotIn('id', $incomingIds)
-                    ->delete();
+                 $existingIds = $master->schedules()->pluck('id')->toArray();
+
+                // 🔥 الحل
+                if (count($incomingIds) === count($existingIds)) {
+                    $master->schedules()
+                        ->whereNotIn('id', $incomingIds)
+                        ->delete();
+                }
 
                 foreach ($data['schedules'] as $schedule) {
 
@@ -562,10 +566,41 @@ class MasterScheduleService
             ->when($storeId, function ($q) use ($storeId) {
                 $q->where('store_id', $storeId);
             })
-            ->with('schedules')
+            ->with([
+                'schedules' => function ($q) {
+                    $q->withTrashed()->with('employee');
+                },
+                'trackerSchedule' => function ($q) {
+                    $q->withTrashed()->with([
+                        'trackerDetails' => function ($q) {
+                            $q->withTrashed();
+                        }
+                    ]);
+                }
+            ])
             ->orderBy('store_id')
             ->orderBy('start_date')
-            ->get();
+            ->get()
+            ->map(function ($master) {
+                return $this->attachTrackersToSchedulesEmployees($master);
+            });
+    }
+    private function attachTrackersToSchedulesEmployees(MasterSchedule $master)
+    {
+        $trackerDetails = optional($master->trackerSchedule)->trackerDetails ?? collect();
+
+        $master->schedules->transform(function ($schedule) use ($trackerDetails) {
+            if ($schedule->employee) {
+                $schedule->employee->trackers = $trackerDetails
+                    ->where('employeeId', $schedule->employee_id)
+                    ->values();
+            }
+            return $schedule;
+        });
+
+        unset($master->tracker_schedule);
+
+        return $master;
     }
 
  

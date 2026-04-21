@@ -12,10 +12,7 @@ class Payroll extends Model
         'paymentDate', 'paymentStatus'
     ];
 
-    public function employee()
-    {
-        return $this->belongsTo(Employee::class, 'employeeId');
-    }
+ 
 
     public function scoreCard()
     {

@@ -9,8 +9,7 @@ return new class extends Migration
     {
         Schema::create('payroll', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('employeeId');  // Foreign Key for employees
-            $table->unsignedBigInteger('scorecardId');  // Foreign Key for score_card
+             $table->unsignedBigInteger('scorecardId');  // Foreign Key for score_card
             $table->float('loanAmount');
             $table->float('deductions');
             $table->float('taxes');
@@ -27,7 +26,6 @@ return new class extends Migration
             $table->softDeletes(); // For soft deletes
 
             // Foreign Key Constraints
-            $table->foreign('employeeId')->references('id')->on('employees')->onDelete('restrict');
             $table->foreign('approvedByThirdShiftStoreManagerId')->references('id')->on('users')->onDelete('restrict');
             $table->foreign('approvedBySeniorManagerId')->references('id')->on('users')->onDelete('restrict');
             $table->foreign('scorecardId')->references('id')->on('score_cards')->onDelete('restrict');
