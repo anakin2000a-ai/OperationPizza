@@ -2,9 +2,11 @@
 
 namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ScoreCard extends Model
 {
+    use SoftDeletes;
     protected $fillable = ['employeeId', 'scheduleWeekId', 'totalHoursWorked', 'trackerScore', 'finalSalary'];
 
     public function employee()
