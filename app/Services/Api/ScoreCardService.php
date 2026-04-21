@@ -12,11 +12,13 @@ use Illuminate\Support\Facades\DB;
 
 class ScoreCardService
 {
-    public function create(int $scheduleWeekId): array
+    public function create(int $scheduleWeekId, int $storeId): array
     {
-        return DB::transaction(function () use ($scheduleWeekId) {
+        return DB::transaction(function () use ($scheduleWeekId, $storeId) {
 
-            $master = MasterSchedule::findOrFail($scheduleWeekId);
+           $master = MasterSchedule::where('id', $scheduleWeekId)
+            ->where('store_id', $storeId)
+            ->firstOrFail();
 
             $employees = Schedule::where('schedule_week_id', $scheduleWeekId)
                 ->whereNotNull('employee_id')
