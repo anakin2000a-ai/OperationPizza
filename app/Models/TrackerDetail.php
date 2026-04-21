@@ -9,7 +9,7 @@ class TrackerDetail extends Model
     use SoftDeletes;
     protected $fillable = [
         'trackerId', 'employeeId', 'respect', 'uniforms', 'commitmentToAttend', 
-        'performance', 'finalResult', 'date'
+        'performance', 'finalResult', 'date', 'moneyOwed', 'ReasonForMoneyOwed'
     ];
 
     public function trackerSchedule()

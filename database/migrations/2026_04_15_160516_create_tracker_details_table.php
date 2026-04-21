@@ -17,6 +17,9 @@ return new class extends Migration
             $table->boolean('performance');
             $table->float('finalResult');
             $table->date('date');
+            $table->float('moneyOwed')->default(0)->nullable();
+            $table->string('ReasonForMoneyOwed')->nullable();
+    
             $table->timestamps();
             $table->softDeletes(); // For soft deletes
 

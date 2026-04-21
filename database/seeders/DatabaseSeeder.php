@@ -11,7 +11,10 @@ class DatabaseSeeder extends Seeder
         $this->call([
             UserSeeder::class,
             StoreSeeder::class,
-            // EmployeeSeeder::class,
+            EmployeeSeeder::class,
+
+            AvailabilitySeeder::class,
+            AvailabilityTimeSeeder::class,
         ]);
     }
 }
