@@ -1,0 +1,29 @@
+<?php
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('taxes', function (Blueprint $table) {
+            $table->id();
+            $table->float('taxAmount');
+            $table->enum('taxtype', ['w2','1099']);
+            $table->unsignedBigInteger('createdBy')->nullable(); // Foreign key for users
+            $table->unsignedBigInteger('editedBy')->nullable(); // Foreign key for users
+            $table->timestamps();
+            $table->softDeletes(); // For soft deletes
+
+            // Foreign Key Constraints
+            $table->foreign('createdBy')->references('id')->on('users')->onDelete('restrict');
+            $table->foreign('editedBy')->references('id')->on('users')->onDelete('restrict');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('taxes');
+    }
+};

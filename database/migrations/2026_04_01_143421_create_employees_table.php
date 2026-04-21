@@ -15,12 +15,16 @@ return new class extends Migration
         $table->id();
         $table->foreignId('store_id')->constrained()->restrictOnDelete();
 
-        $table->string('name')->nullable();
-        $table->string('phone')->nullable();
-        $table->string('email')->nullable();
-        $table->date('hire_date')->nullable();
+        $table->string('FirstName');
+        $table->string('LastName');
+        $table->boolean('HaveCar');
+        $table->string('phone');
+        $table->string('email');
+        $table->date('hire_date');
 
-        $table->enum('status', ['terminated', 'new hire', 'old hire']);
+        $table->enum('status', ['termination', 'resignation', 'hired','OJE']);
+        $table->enum('Nationality', ['American', 'Foreigner']);
+        $table->enum('position', ['CrowMember', 'assistantManager', 'shiftManager']);
 
         $table->timestamps();
      });
