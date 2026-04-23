@@ -2,7 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ScheduleTemplateController;
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth:sanctum',\App\Http\Middleware\CheckStoreAccess::class)->group(function () {
     Route::prefix('stores/{store}')->group(function () {
 
         Route::get('schedule-templates/all', [ScheduleTemplateController::class, 'AllTemplate']);

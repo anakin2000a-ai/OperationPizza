@@ -5,7 +5,7 @@ use App\Http\Controllers\Api\DayOffController;
 
 Route::post('days-off', [DayOffController::class, 'store']);
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth:sanctum', \App\Http\Middleware\CheckStoreAccess::class)->group(function () {
 
     Route::get('stores/{store}/days-off', [DayOffController::class, 'index']);
     Route::put('stores/{store}/days-off/{day_off}', [DayOffController::class, 'update']);

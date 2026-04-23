@@ -2,7 +2,7 @@
 use App\Http\Controllers\Api\PayrollController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth:sanctum',   \App\Http\Middleware\CheckStoreManagerRole::class])->group(function () {
+Route::middleware(['auth:sanctum',   \App\Http\Middleware\CheckStoreAccess::class])->group(function () {
     // Store-specific payroll routes (SecondShiftStoreManager and ThirdShiftStoreManager)
     Route::prefix('stores/{store}/payroll')->group(function () {
     
