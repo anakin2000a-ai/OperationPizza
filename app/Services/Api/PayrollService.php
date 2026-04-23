@@ -3,10 +3,7 @@ namespace App\Services\Api;
 
 use App\Models\Payroll;
 use App\Models\ScoreCard;
-use App\Models\Loan;
-use App\Models\Deduction;
-use App\Models\Apartment;
-use App\Models\Sim;
+ 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\PayrollApprovedMail;
@@ -73,17 +70,22 @@ class PayrollService
                 if ($deduction) {
                     $apartmentDeduction = \App\Models\Apartment::find($deduction->ApartmentId)->ApartmentRent;
                     $simDeduction = \App\Models\Sim::find($deduction->SimId)->simCardInstallment;
+                    $deductionReason= "Deductions applied for apartment and sim card as total hours worked is greater than 30.";
                 } else {
                     $apartmentDeduction = 0;
                     $simDeduction = 0;
+                    $deductionReason = " He does not have sim card or apartment deductions.";
                 }
+            }else{
+                $deductionReason = "No deductions applied for apartment and sim card as total hours worked is 30 or less.";
             }
-
+  
             // Calculate the sum of deductions and loans
             $totalDeductions = $apartmentDeduction + $simDeduction;
 
             // If final salary is less than loanDeduction, subtract only the remaining balance
             if ($scoreCard->finalSalary <= $loanDeduction) {
+                
                 $remainingLoanDeduction = $loanDeduction - $scoreCard->finalSalary;
                 $loanDeduction = $scoreCard->finalSalary;  // Subtract the remaining amount from loan
                 if ($employeeLoan) {
@@ -91,6 +93,7 @@ class PayrollService
                     if ($employeeLoan->loanRentAmount == 0) {
                         $employeeLoan->loanStatus = "completed";
                     }
+                    // $emploans= $employeeLoan->loanRentAmount;
                     $employeeLoan->save();
                 }
 
@@ -100,22 +103,27 @@ class PayrollService
                 $payroll = \App\Models\Payroll::create([
                     'scorecardId' => $scoreCard->id,
                     'loanAmount' => $loanAmountWithTax,
+                    'loanRentAmount' => $employeeLoan?->loanRentAmount ?? 0,
                     'deductions' => $apartmentDeduction + $simDeduction,
+                    'deductionReason' => $deductionReason,
                     'finalSalary' => $finalSalary,
                     'paymentStatus' => 'pending', // Default status
                 ]);
 
                 DB::commit();
                  // Return the payroll details with deductions breakdown
-            return response()->json([
-                'success' => true,
-                'payroll' => $payroll,
-                'loanDeduction' => $loanDeduction,
-                'apartmentDeduction' => $apartmentDeduction,
-                'simDeduction' => $simDeduction,
-                'finalSalary' => $finalSalary,
-                'message' => 'Payroll created successfully with deductions breakdown.'
-            ]);
+                return response()->json([
+                    'success' => true,
+                    'payroll' => $payroll,
+                    'loanDeduction' => $loanDeduction,
+                    'loanRentAmount' => $employeeLoan?->loanRentAmount ?? 0,
+                    'apartmentDeduction' => $apartmentDeduction,
+                    'simDeduction' => $simDeduction,
+                    'deductionReason' => $deductionReason,
+
+                    'finalSalary' => $finalSalary,
+                    'message' => 'Payroll created successfully with deductions breakdown.'
+                ]);
             } else {
                 $finalSalary = $scoreCard->finalSalary - $totalDeductions;
 
@@ -126,6 +134,8 @@ class PayrollService
                         if ($employeeLoan->loanRentAmount == 0) {
                             $employeeLoan->loanStatus = "completed";
                         }
+                        // $emploans= $employeeLoan->loanRentAmount;
+                            
                         $employeeLoan->save();
                     }
 
@@ -135,7 +145,10 @@ class PayrollService
                     $payroll = \App\Models\Payroll::create([
                         'scorecardId' => $scoreCard->id,
                         'loanAmount' => $loanAmountWithTax,
+                        'loanRentAmount' => $employeeLoan?->loanRentAmount ?? 0,
                         'deductions' => $apartmentDeduction + $simDeduction,
+                        'deductionReason' => $deductionReason,
+
                         'finalSalary' => $finalSalary,
                         'paymentStatus' => 'pending', // Default status
                     ]);
@@ -145,8 +158,11 @@ class PayrollService
                     'success' => true,
                     'payroll' => $payroll,
                     'loanDeduction' => $loanDeduction,
+                    'loanRentAmount' => $employeeLoan?->loanRentAmount ?? 0,
                     'apartmentDeduction' => $apartmentDeduction,
                     'simDeduction' => $simDeduction,
+                    'deductionReason' => $deductionReason,
+
                     'finalSalary' => $finalSalary,
                     'message' => 'Payroll created successfully with deductions breakdown.'
                 ]);
@@ -161,6 +177,7 @@ class PayrollService
                     if ($employeeLoan->loanRentAmount == 0) {
                         $employeeLoan->loanStatus = "completed";
                     }
+                    // $emploans= $employeeLoan->loanRentAmount;
                     $employeeLoan->save();
                 }
 
@@ -168,7 +185,9 @@ class PayrollService
                 $payroll = \App\Models\Payroll::create([
                     'scorecardId' => $scoreCard->id,
                     'loanAmount' => $loanAmountWithTax,
+                    'loanRentAmount' => $employeeLoan?->loanRentAmount ?? 0,
                     'deductions' => $apartmentDeduction + $simDeduction,
+                    'deductionReason' => $deductionReason,
                     'finalSalary' => $finalSalary,
                     'paymentStatus' => 'pending', // Default status
                 ]);
@@ -181,8 +200,10 @@ class PayrollService
                 'success' => true,
                 'payroll' => $payroll,
                 'loanDeduction' => $loanDeduction,
+                'loanRentAmount' => $employeeLoan?->loanRentAmount ?? 0,
                 'apartmentDeduction' => $apartmentDeduction,
                 'simDeduction' => $simDeduction,
+                'deductionReason' => $deductionReason,
                 'finalSalary' => $finalSalary,
                 'message' => 'Payroll created successfully with deductions breakdown.'
             ]);

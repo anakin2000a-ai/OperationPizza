@@ -14,10 +14,10 @@ class DatabaseSeeder extends Seeder
             // EmployeeSeeder::class,
             // UserSeeder::class,
 
-            AvailabilitySeeder::class,
-            AvailabilityTimeSeeder::class,
-            // SchedulesTableSeeder::class,
-            // TrackerDetailsTableSeeder::class,
+            // AvailabilitySeeder::class,
+            // AvailabilityTimeSeeder::class,
+            SchedulesTableSeeder::class,
+            TrackerDetailsTableSeeder::class,
         ]);
     }
 }

@@ -10,7 +10,7 @@ class Payroll extends Model
     protected $table = 'payroll';
     use SoftDeletes;
     protected $fillable = [
-        'employeeId', 'scorecardId', 'loanAmount', 'deductions', 
+        'employeeId', 'scorecardId', 'loanAmount','loanRentAmount', 'deductions', 'deductionReason',
         'finalSalary', 'approvedByThirdShiftStoreManager', 'approvedBySeniorManager','approvedBySeniorManagerId', 'approvedByThirdShiftStoreManagerId',
         'paymentDate', 'paymentStatus'
     ];
