@@ -15,6 +15,11 @@ Route::middleware(['auth:sanctum',   \App\Http\Middleware\CheckStoreManagerRole:
    
         // Route for Third Shift Store Manager to approve payroll
        Route::patch('/approve-third-shift/{id}', [PayrollController::class, 'approveByThirdShiftStoreManager'])->whereNumber('id');
+       Route::delete('/softdelete/{id}', [PayrollController::class, 'deleteByStore']);
+       Route::patch('/restore/{id}', [PayrollController::class, 'restoreByStore']);
+       Route::delete('/force/{id}', [PayrollController::class, 'forceDeleteByStore']);
+
+    
     });
 });
 
@@ -26,5 +31,10 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\SeniorManagerMiddleware:
 
         // Route for Senior Manager to approve payroll for any store
         Route::patch('/approve-senior-manager/{id}', [PayrollController::class, 'approveBySeniorManager']);
+
+        Route::delete('/softdelete/{id}', [PayrollController::class, 'deleteAll']);
+        Route::patch('/restore/{id}', [PayrollController::class, 'restoreAll']);
+        Route::delete('/force/{id}', [PayrollController::class, 'forceDeleteAll']);
+
     });
 });

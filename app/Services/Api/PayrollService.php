@@ -483,4 +483,51 @@ class PayrollService
             }
         });
     }
+    public function deletePayroll(?int $storeId, int $payrollId): void
+    {
+        $payroll = Payroll::query()
+            ->where('id', $payrollId)
+            ->when($storeId, function ($q) use ($storeId) {
+                $q->whereHas('scoreCard.masterSchedule', function ($q2) use ($storeId) {
+                    $q2->where('store_id', $storeId);
+                });
+            })
+            ->firstOrFail();
+
+        if ($payroll->paymentStatus !== 'pending') {
+            throw new \Exception('Only pending payroll can be deleted.');
+        }
+
+        $payroll->delete(); // soft delete
+    }
+    public function restorePayroll(?int $storeId, int $payrollId): void
+    {
+        $payroll = Payroll::onlyTrashed()
+            ->where('id', $payrollId)
+            ->when($storeId, function ($q) use ($storeId) {
+                $q->whereHas('scoreCard.masterSchedule', function ($q2) use ($storeId) {
+                    $q2->where('store_id', $storeId);
+                });
+            })
+            ->firstOrFail();
+
+        $payroll->restore();
+    }
+    public function forceDeletePayroll(?int $storeId, int $payrollId): void
+    {
+        $payroll = Payroll::onlyTrashed()
+            ->where('id', $payrollId)
+            ->when($storeId, function ($q) use ($storeId) {
+                $q->whereHas('scoreCard.masterSchedule', function ($q2) use ($storeId) {
+                    $q2->where('store_id', $storeId);
+                });
+            })
+            ->firstOrFail();
+
+        if ($payroll->paymentStatus !== 'pending') {
+            throw new \Exception('Only pending payroll can be permanently deleted.');
+        }
+
+        $payroll->forceDelete();
+    }
 }

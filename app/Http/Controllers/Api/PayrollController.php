@@ -157,4 +157,106 @@ class PayrollController extends Controller
             ], 500);
         }
     }
+    public function deleteByStore(Store $store, int $id): JsonResponse
+    {
+        try {
+            $this->payrollService->deletePayroll($store->id, $id);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payroll soft deleted'
+            ]);
+
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Delete failed',
+                'error' => $e->getMessage()
+            ], 400);
+        }
+    }
+    public function restoreByStore(Store $store, int $id): JsonResponse
+    {
+        try {
+            $this->payrollService->restorePayroll($store->id, $id);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payroll restored'
+            ]);
+
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Restore failed',
+                'error' => $e->getMessage()
+            ], 400);
+        }
+    }
+    public function forceDeleteByStore(Store $store, int $id): JsonResponse
+    {
+        try {
+            $this->payrollService->forceDeletePayroll($store->id, $id);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payroll permanently deleted'
+            ]);
+
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Force delete failed',
+                'error' => $e->getMessage()
+            ], 400);
+        }
+    }
+    public function deleteAll(int $id): JsonResponse
+    {
+        try {
+            $this->payrollService->deletePayroll(null, $id);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payroll soft deleted'
+            ]);
+
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Delete failed',
+                'error' => $e->getMessage()
+            ], 400);
+        }
+    }
+    public function restoreAll(int $id): JsonResponse
+    {
+        try {
+            $this->payrollService->restorePayroll(null, $id);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payroll restored'
+            ]);
+
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Restore failed',
+                'error' => $e->getMessage()
+            ], 400);
+        }
+    }
+    public function forceDeleteAll(int $id): JsonResponse
+    {
+        try {
+            $this->payrollService->forceDeletePayroll(null, $id);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payroll permanently deleted'
+            ]);
+
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Force delete failed',
+                'error' => $e->getMessage()
+            ], 400);
+        }
+    }
 }
