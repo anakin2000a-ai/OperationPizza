@@ -25,4 +25,8 @@ class Store extends Model
     {
         return $this->hasMany(ScheduleTemplateStore::class, 'store_id');
     }
+    public function users()
+    {
+        return $this->hasMany(User::class, 'store_id');
+    }
 }

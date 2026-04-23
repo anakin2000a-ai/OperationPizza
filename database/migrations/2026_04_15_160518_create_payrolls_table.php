@@ -9,13 +9,18 @@ return new class extends Migration
     {
         Schema::create('payroll', function (Blueprint $table) {
             $table->id();
-             $table->unsignedBigInteger('scorecardId');  // Foreign Key for score_card
+            $table->unsignedBigInteger('scorecardId');  // Foreign Key for score_card
             $table->float('loanAmount');
+            $table->decimal('loanRentAmount', 10, 2)->nullable();
+
             $table->float('deductions');
-             $table->float('finalSalary');
+            $table->string('deductionReason')->nullable();
+
+
+            $table->float('finalSalary');
             $table->boolean('IsapprovedByThirdShiftStoreManager')->default(false) ;
-             $table->unsignedBigInteger('approvedByThirdShiftStoreManagerId')->nullable();   
-             $table->boolean('IsapprovedBySeniorManager')->default(false) ;
+            $table->unsignedBigInteger('approvedByThirdShiftStoreManagerId')->nullable();   
+            $table->boolean('IsapprovedBySeniorManager')->default(false) ;
             $table->unsignedBigInteger('approvedBySeniorManagerId')->nullable();   
 
  
@@ -27,7 +32,7 @@ return new class extends Migration
             // Foreign Key Constraints
             $table->foreign('approvedByThirdShiftStoreManagerId')->references('id')->on('users')->onDelete('restrict');
             $table->foreign('approvedBySeniorManagerId')->references('id')->on('users')->onDelete('restrict');
-            $table->foreign('scorecardId')->references('id')->on('score_cards')->onDelete('restrict');
+            $table->foreign('scorecardId')->references('id')->on('score_cards')->onDelete('cascade');
         });
     }
 
