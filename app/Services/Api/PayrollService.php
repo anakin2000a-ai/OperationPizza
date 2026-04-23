@@ -7,211 +7,370 @@ use App\Models\ScoreCard;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\PayrollApprovedMail;
+use App\Models\Apartment;
+use App\Models\Deduction;
+use App\Models\EmployeeLoan;
+use App\Models\Loan;
 use App\Models\Notification;
+use App\Models\Sim;
+
 class PayrollService
 {
     public function createPayroll(array $data)
     {
-        DB::beginTransaction();
-        try {
-            // Get the scorecard for the employee
-            $scoreCard = ScoreCard::findOrFail($data['scoreCardId']);
-            $employee = $scoreCard->employee;
+        return DB::transaction(function () use ($data) {
+            $scoreCard = ScoreCard::with('employee')->findOrFail($data['scoreCardId']);
 
-            // Check if the final salary is below zero
-            if ($scoreCard->finalSalary <= 0) {
-                DB::rollBack();
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Final salary cannot be below zero. Please review the data.'
-                ], 400); // Bad Request
+            if (Payroll::where('scorecardId', $scoreCard->id)->lockForUpdate()->exists()) {
+                throw new \Exception('Payroll already exists for this scorecard.');
+            }
+            // 👇 HERE
+            if ($scoreCard->ScoreCardStatus !== 'pending') {
+                throw new \Exception('ScoreCard already processed.');
+            }
+            if (!$scoreCard->employee) {
+                throw new \Exception('Employee not found for this scorecard.');
+            }
+            if($scoreCard->finalSalary <230 && $scoreCard->totalHoursWorked >=30){
+                throw new \Exception('The final salary is below the minimum threshold of $230 for employees who worked more than 30 hours. Please review the scorecard data.');
             }
 
-            // Fetch the loan from employeesloans (instead of directly from loans)
-            $employeeLoan = \App\Models\EmployeeLoan::where('employeeId', $employee->id)
-                ->where('loanStatus', 'active') // Ensure loan status is 'active'
+             $employee = $scoreCard->employee;
+ 
+
+            if ($scoreCard->finalSalary <= 0) {
+                throw new \Exception('Final salary cannot be below zero.');
+            }
+
+            // =======================
+            // LOAN
+            // =======================
+            $employeeLoan = EmployeeLoan::where('employeeId', $employee->id)
+                ->where('loanStatus', 'active')
                 ->first();
-            
-            // Initialize loan related deductions
+
             $loanAmountWithTax = 0;
             $loanDeduction = 0;
 
-            // Check if the employee has an active loan
             if ($employeeLoan) {
-                $loan = \App\Models\Loan::find($employeeLoan->loansId);
-                if ($loan) {
-                    $loanAmountWithTax = $loan->loanAmountWithTax;
+                $loan = Loan::find($employeeLoan->loansId);
+                if (!$loan) {
+                throw new \Exception('Loan record not found.');
+                 }
 
-                    // Adjust loan based on loan type (phone or car)
-                    if ($loan->loanType === 'phone') {
-                        $loanDeduction = 75;
-                    } elseif ($loan->loanType === 'car') {
-                        $loanDeduction = 150;
-                    }
+             
+                $loanAmountWithTax = $loan->loanAmountWithTax;
 
-                    // Ensure loan deduction does not exceed loan balance
-                    if ($loanAmountWithTax < $loanDeduction) {
-                        $loanDeduction = $loanAmountWithTax;
-                    }
-                    if ($employeeLoan->loanRentAmount < $loanDeduction) {
-                        $loanDeduction = $employeeLoan->loanRentAmount;
-                    }
-                }
+                $loanDeduction = match ($loan->loanType) {
+                    'phone' => 75,
+                    'car' => 150,
+                    default => 0
+                };
+
+                $loanDeduction = min(
+                    $loanDeduction,
+                    $loanAmountWithTax,
+                    $employeeLoan->loanRentAmount
+                );
+                 
             }
 
-            // Initialize apartment and sim values
+            // =======================
+            // DEDUCTIONS
+            // =======================
             $apartmentDeduction = 0;
             $simDeduction = 0;
 
-            // If totalHoursWorked <= 30, do not subtract apartment and sim
             if ($scoreCard->totalHoursWorked > 30) {
-                // Deduct apartment rent and sim card installment if available
-                $deduction = \App\Models\Deduction::where('employeeId', $employee->id)->first();
+                $deduction = Deduction::where('employeeId', $employee->id)->first();
+
                 if ($deduction) {
-                    $apartmentDeduction = \App\Models\Apartment::find($deduction->ApartmentId)->ApartmentRent;
-                    $simDeduction = \App\Models\Sim::find($deduction->SimId)->simCardInstallment;
-                    $deductionReason= "Deductions applied for apartment and sim card as total hours worked is greater than 30.";
+                    $apartment = Apartment::find($deduction->ApartmentId);
+                    $sim = Sim::find($deduction->SimId);
+
+                    $apartmentDeduction = $apartment?->ApartmentRent ?? 0;
+                    $simDeduction = $sim?->simCardInstallment ?? 0;
+
+                    $deductionReason = "Deductions applied for apartment and sim card.";
                 } else {
-                    $apartmentDeduction = 0;
-                    $simDeduction = 0;
-                    $deductionReason = " He does not have sim card or apartment deductions.";
+                    $deductionReason = "No apartment or sim deductions.";
                 }
-            }else{
-                $deductionReason = "No deductions applied for apartment and sim card as total hours worked is 30 or less.";
+            } else {
+                $deductionReason = "No deductions (hours ≤ 30).";
             }
-  
-            // Calculate the sum of deductions and loans
+
             $totalDeductions = $apartmentDeduction + $simDeduction;
 
-            // If final salary is less than loanDeduction, subtract only the remaining balance
-            if ($scoreCard->finalSalary <= $loanDeduction) {
-                
-                $remainingLoanDeduction = $loanDeduction - $scoreCard->finalSalary;
-                $loanDeduction = $scoreCard->finalSalary;  // Subtract the remaining amount from loan
-                if ($employeeLoan) {
-                    $employeeLoan->loanRentAmount -= $loanDeduction;
-                    if ($employeeLoan->loanRentAmount == 0) {
-                        $employeeLoan->loanStatus = "completed";
-                    }
-                    // $emploans= $employeeLoan->loanRentAmount;
-                    $employeeLoan->save();
-                }
+            // =======================
+            // FINAL SALARY CALCULATION
+            // =======================
+            $finalSalary = $scoreCard->finalSalary - $totalDeductions;
 
-                // Update final salary after loan deduction
-                $finalSalary = 0;  // Final salary is now 0 after deduction
-                // Create the payroll record
-                $payroll = \App\Models\Payroll::create([
-                    'scorecardId' => $scoreCard->id,
-                    'loanAmount' => $loanAmountWithTax,
-                    'loanRentAmount' => $employeeLoan?->loanRentAmount ?? 0,
-                    'deductions' => $apartmentDeduction + $simDeduction,
-                    'deductionReason' => $deductionReason,
-                    'finalSalary' => $finalSalary,
-                    'paymentStatus' => 'pending', // Default status
-                ]);
-
-                DB::commit();
-                 // Return the payroll details with deductions breakdown
-                return response()->json([
-                    'success' => true,
-                    'payroll' => $payroll,
-                    'loanDeduction' => $loanDeduction,
-                    'loanRentAmount' => $employeeLoan?->loanRentAmount ?? 0,
-                    'apartmentDeduction' => $apartmentDeduction,
-                    'simDeduction' => $simDeduction,
-                    'deductionReason' => $deductionReason,
-
-                    'finalSalary' => $finalSalary,
-                    'message' => 'Payroll created successfully with deductions breakdown.'
-                ]);
+            if ($finalSalary <= $loanDeduction) {
+                $loanDeduction = $finalSalary;
+                $finalSalary = 0;
             } else {
-                $finalSalary = $scoreCard->finalSalary - $totalDeductions;
-
-                if ($finalSalary <= $loanDeduction) {
-                    $loanDeduction = $finalSalary;
-                    if ($employeeLoan) {
-                        $employeeLoan->loanRentAmount -= $loanDeduction;
-                        if ($employeeLoan->loanRentAmount == 0) {
-                            $employeeLoan->loanStatus = "completed";
-                        }
-                        // $emploans= $employeeLoan->loanRentAmount;
-                            
-                        $employeeLoan->save();
-                    }
-
-                    // Update final salary after loan deduction
-                    $finalSalary = 0;
-                    // Create the payroll record
-                    $payroll = \App\Models\Payroll::create([
-                        'scorecardId' => $scoreCard->id,
-                        'loanAmount' => $loanAmountWithTax,
-                        'loanRentAmount' => $employeeLoan?->loanRentAmount ?? 0,
-                        'deductions' => $apartmentDeduction + $simDeduction,
-                        'deductionReason' => $deductionReason,
-
-                        'finalSalary' => $finalSalary,
-                        'paymentStatus' => 'pending', // Default status
-                    ]);
-                    DB::commit();
-                     // Return the payroll details with deductions breakdown
-                return response()->json([
-                    'success' => true,
-                    'payroll' => $payroll,
-                    'loanDeduction' => $loanDeduction,
-                    'loanRentAmount' => $employeeLoan?->loanRentAmount ?? 0,
-                    'apartmentDeduction' => $apartmentDeduction,
-                    'simDeduction' => $simDeduction,
-                    'deductionReason' => $deductionReason,
-
-                    'finalSalary' => $finalSalary,
-                    'message' => 'Payroll created successfully with deductions breakdown.'
-                ]);
-                }
-
-                // Further loan deduction if any
                 $finalSalary -= $loanDeduction;
-
-                // Save remaining loan balance
-                if ($employeeLoan) {
-                    $employeeLoan->loanRentAmount -= $loanDeduction;
-                    if ($employeeLoan->loanRentAmount == 0) {
-                        $employeeLoan->loanStatus = "completed";
-                    }
-                    // $emploans= $employeeLoan->loanRentAmount;
-                    $employeeLoan->save();
-                }
-
-                // Create the payroll record
-                $payroll = \App\Models\Payroll::create([
-                    'scorecardId' => $scoreCard->id,
-                    'loanAmount' => $loanAmountWithTax,
-                    'loanRentAmount' => $employeeLoan?->loanRentAmount ?? 0,
-                    'deductions' => $apartmentDeduction + $simDeduction,
-                    'deductionReason' => $deductionReason,
-                    'finalSalary' => $finalSalary,
-                    'paymentStatus' => 'pending', // Default status
-                ]);
-
-                DB::commit();
             }
 
-            // Return the payroll details with deductions breakdown
-            return response()->json([
-                'success' => true,
-                'payroll' => $payroll,
-                'loanDeduction' => $loanDeduction,
+            // =======================
+            // UPDATE LOAN
+            // =======================
+            if ($employeeLoan) {
+                $employeeLoan->loanRentAmount -= $loanDeduction;
+
+                if ($employeeLoan->loanRentAmount <= 0) {
+                    $employeeLoan->loanStatus = "completed";
+                    $employeeLoan->loanRentAmount = 0;
+                }
+
+                $employeeLoan->save();
+            }
+
+            // =======================
+            // CREATE PAYROLL (ONCE)
+            // =======================
+            $payroll = Payroll::create([
+                'scorecardId' => $scoreCard->id,
+                'loanAmount' => $loanAmountWithTax,
                 'loanRentAmount' => $employeeLoan?->loanRentAmount ?? 0,
-                'apartmentDeduction' => $apartmentDeduction,
-                'simDeduction' => $simDeduction,
+                'deductions' => $totalDeductions,
                 'deductionReason' => $deductionReason,
                 'finalSalary' => $finalSalary,
-                'message' => 'Payroll created successfully with deductions breakdown.'
+                'paymentStatus' => 'pending',
             ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            throw new \Exception('Payroll creation failed: ' . $e->getMessage());
-        }
+
+            return [
+                'payroll' => $payroll,
+                'breakdown' => [
+                    'loan_deduction' => $loanDeduction,
+                    'remaining_loan' => $employeeLoan?->loanRentAmount ?? 0,
+                    'apartment_deduction' => $apartmentDeduction,
+                    'sim_deduction' => $simDeduction,
+                    'deduction_reason' => $deductionReason,
+                ],
+                'summary' => [
+                    'final_salary' => $finalSalary,
+                ]
+            ];
+        });
     }
+    // public function createPayroll(array $data)
+    // {
+    //     DB::beginTransaction();
+    //     try {
+    //         // Get the scorecard for the employee
+    //         $scoreCard = ScoreCard::findOrFail($data['scoreCardId']);
+    //         $employee = $scoreCard->employee;
+
+    //         // Check if the final salary is below zero
+    //         if ($scoreCard->finalSalary <= 0) {
+    //             DB::rollBack();
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'Final salary cannot be below zero. Please review the data.'
+    //             ], 400); // Bad Request
+    //         }
+
+    //         // Fetch the loan from employeesloans (instead of directly from loans)
+    //         $employeeLoan = \App\Models\EmployeeLoan::where('employeeId', $employee->id)
+    //             ->where('loanStatus', 'active') // Ensure loan status is 'active'
+    //             ->first();
+            
+    //         // Initialize loan related deductions
+    //         $loanAmountWithTax = 0;
+    //         $loanDeduction = 0;
+
+    //         // Check if the employee has an active loan
+    //         if ($employeeLoan) {
+    //             $loan = \App\Models\Loan::find($employeeLoan->loansId);
+    //             if ($loan) {
+    //                 $loanAmountWithTax = $loan->loanAmountWithTax;
+
+    //                 // Adjust loan based on loan type (phone or car)
+    //                 if ($loan->loanType === 'phone') {
+    //                     $loanDeduction = 75;
+    //                 } elseif ($loan->loanType === 'car') {
+    //                     $loanDeduction = 150;
+    //                 }
+
+    //                 // Ensure loan deduction does not exceed loan balance
+    //                 if ($loanAmountWithTax < $loanDeduction) {
+    //                     $loanDeduction = $loanAmountWithTax;
+    //                 }
+    //                 if ($employeeLoan->loanRentAmount < $loanDeduction) {
+    //                     $loanDeduction = $employeeLoan->loanRentAmount;
+    //                 }
+    //             }
+    //         }
+
+    //         // Initialize apartment and sim values
+    //         $apartmentDeduction = 0;
+    //         $simDeduction = 0;
+
+    //         // If totalHoursWorked <= 30, do not subtract apartment and sim
+    //         if ($scoreCard->totalHoursWorked > 30) {
+    //             // Deduct apartment rent and sim card installment if available
+    //             $deduction = \App\Models\Deduction::where('employeeId', $employee->id)->first();
+    //             if ($deduction) {
+    //               $apartment = \App\Models\Apartment::find($deduction->ApartmentId);
+    //               $sim = \App\Models\Sim::find($deduction->SimId);
+
+    //               $apartmentDeduction = $apartment?->ApartmentRent ?? 0;
+    //               $simDeduction = $sim?->simCardInstallment ?? 0;
+    //               $deductionReason= "Deductions applied for apartment and sim card as total hours worked is greater than 30.";
+    //             } else {
+    //                 $apartmentDeduction = 0;
+    //                 $simDeduction = 0;
+    //                 $deductionReason = " He does not have sim card or apartment deductions.";
+    //             }
+    //         }else{
+    //             $deductionReason = "No deductions applied for apartment and sim card as total hours worked is 30 or less.";
+    //         }
+  
+    //         // Calculate the sum of deductions and loans
+    //         $totalDeductions = $apartmentDeduction + $simDeduction;
+
+    //         // If final salary is less than loanDeduction, subtract only the remaining balance
+    //         if ($scoreCard->finalSalary <= $loanDeduction) {
+                
+    //             $remainingLoanDeduction = $loanDeduction - $scoreCard->finalSalary;
+    //             $loanDeduction = $scoreCard->finalSalary;  // Subtract the remaining amount from loan
+    //             if ($employeeLoan) {
+    //                 $employeeLoan->loanRentAmount -= $loanDeduction;
+    //                 if ($employeeLoan->loanRentAmount == 0) {
+    //                     $employeeLoan->loanStatus = "completed";
+    //                 }
+    //                 // $emploans= $employeeLoan->loanRentAmount;
+    //                 $employeeLoan->save();
+    //             }
+
+    //             // Update final salary after loan deduction
+    //             $finalSalary = 0;  // Final salary is now 0 after deduction
+    //             // Create the payroll record
+    //             $payroll = \App\Models\Payroll::create([
+    //                 'scorecardId' => $scoreCard->id,
+    //                 'loanAmount' => $loanAmountWithTax,
+    //                 'loanRentAmount' => $employeeLoan?->loanRentAmount ?? 0,
+    //                 'deductions' => $apartmentDeduction + $simDeduction,
+    //                 'deductionReason' => $deductionReason,
+    //                 'finalSalary' => $finalSalary,
+    //                 'paymentStatus' => 'pending', // Default status
+    //             ]);
+
+    //             DB::commit();
+    //              // Return the payroll details with deductions breakdown
+                
+    //             return [
+    //             'payroll' => $payroll,
+
+    //             'breakdown' => [
+    //                 'loan_deduction' => $loanDeduction,
+    //                 'remaining_loan' => $employeeLoan?->loanRentAmount ?? 0,
+    //                 'apartment_deduction' => $apartmentDeduction,
+    //                 'sim_deduction' => $simDeduction,
+    //                 'deduction_reason' => $deductionReason,
+    //             ],
+
+    //             'summary' => [
+    //                 'final_salary' => $finalSalary,
+    //             ]
+    //         ];
+    //         } else {
+    //             $finalSalary = $scoreCard->finalSalary - $totalDeductions;
+
+    //             if ($finalSalary <= $loanDeduction) {
+    //                 $loanDeduction = $finalSalary;
+    //                 if ($employeeLoan) {
+    //                     $employeeLoan->loanRentAmount -= $loanDeduction;
+    //                     if ($employeeLoan->loanRentAmount == 0) {
+    //                         $employeeLoan->loanStatus = "completed";
+    //                     }
+    //                     // $emploans= $employeeLoan->loanRentAmount;
+                            
+    //                     $employeeLoan->save();
+    //                 }
+
+    //                 // Update final salary after loan deduction
+    //                 $finalSalary = 0;
+    //                 // Create the payroll record
+    //                 $payroll = \App\Models\Payroll::create([
+    //                     'scorecardId' => $scoreCard->id,
+    //                     'loanAmount' => $loanAmountWithTax,
+    //                     'loanRentAmount' => $employeeLoan?->loanRentAmount ?? 0,
+    //                     'deductions' => $apartmentDeduction + $simDeduction,
+    //                     'deductionReason' => $deductionReason,
+
+    //                     'finalSalary' => $finalSalary,
+    //                     'paymentStatus' => 'pending', // Default status
+    //                 ]);
+    //                 DB::commit();
+    //                  // Return the payroll details with deductions breakdown
+    //               return [
+    //                 'payroll' => $payroll,
+
+    //                 'breakdown' => [
+    //                     'loan_deduction' => $loanDeduction,
+    //                     'remaining_loan' => $employeeLoan?->loanRentAmount ?? 0,
+    //                     'apartment_deduction' => $apartmentDeduction,
+    //                     'sim_deduction' => $simDeduction,
+    //                     'deduction_reason' => $deductionReason,
+    //                 ],
+
+    //                 'summary' => [
+    //                     'final_salary' => $finalSalary,
+    //                 ]
+    //             ];
+    //             }
+
+    //             // Further loan deduction if any
+    //             $finalSalary -= $loanDeduction;
+
+    //             // Save remaining loan balance
+    //             if ($employeeLoan) {
+    //                 $employeeLoan->loanRentAmount -= $loanDeduction;
+    //                 if ($employeeLoan->loanRentAmount == 0) {
+    //                     $employeeLoan->loanStatus = "completed";
+    //                 }
+    //                 // $emploans= $employeeLoan->loanRentAmount;
+    //                 $employeeLoan->save();
+    //             }
+
+    //             // Create the payroll record
+    //             $payroll = \App\Models\Payroll::create([
+    //                 'scorecardId' => $scoreCard->id,
+    //                 'loanAmount' => $loanAmountWithTax,
+    //                 'loanRentAmount' => $employeeLoan?->loanRentAmount ?? 0,
+    //                 'deductions' => $apartmentDeduction + $simDeduction,
+    //                 'deductionReason' => $deductionReason,
+    //                 'finalSalary' => $finalSalary,
+    //                 'paymentStatus' => 'pending', // Default status
+    //             ]);
+
+    //             DB::commit();
+    //         }
+
+    //         // Return the payroll details with deductions breakdown
+    //           return [
+    //             'payroll' => $payroll,
+
+    //             'breakdown' => [
+    //                 'loan_deduction' => $loanDeduction,
+    //                 'remaining_loan' => $employeeLoan?->loanRentAmount ?? 0,
+    //                 'apartment_deduction' => $apartmentDeduction,
+    //                 'sim_deduction' => $simDeduction,
+    //                 'deduction_reason' => $deductionReason,
+    //             ],
+
+    //             'summary' => [
+    //                 'final_salary' => $finalSalary,
+    //             ]
+    //         ];
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         throw new \Exception('Payroll creation failed: ' . $e->getMessage());
+    //     }
+    // }
     // public function createPayroll(array $data)
     // {
     //     DB::beginTransaction();

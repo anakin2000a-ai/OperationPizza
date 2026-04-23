@@ -13,7 +13,7 @@ class TaxRequestStore extends FormRequest
     public function rules(): array
     {
         return [
-            'taxAmount' => 'required|numeric|between:0,300', // taxAmount is required and between 0 to 300
+            'taxAmount' => 'required|numeric|between:0,150', // taxAmount is required and between 0 to 300
             'taxtype' => 'required|in:w2,1099|unique:taxes,taxtype',  // taxtype must be one of 'w2' or '1099' and unique
         ];
     }

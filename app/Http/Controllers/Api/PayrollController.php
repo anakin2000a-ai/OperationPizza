@@ -24,15 +24,16 @@ class PayrollController extends Controller
         try {
             $data = $this->payrollService->createPayroll($request->validated());
 
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+            'message' => 'Payroll created successfully'
+        ], 201);
+        } catch (\Exception $e) {
             return response()->json([
-                'success' => true,
-                'data' => $data
-            ]);
-        } catch (Throwable $e) {
-            return response()->json([
-                'message' => 'Failed to create payroll',
-                'error' => $e->getMessage()
-            ], 500);
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 400);
         }
     }
     public function indexAll(StoreManagerPayrollIndexRequest $request): JsonResponse
