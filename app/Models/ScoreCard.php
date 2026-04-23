@@ -18,4 +18,8 @@ class ScoreCard extends Model
     {
         return $this->belongsTo(MasterSchedule::class, 'scheduleWeekId');
     }
+    public function trackerSchedule()
+    {
+        return $this->hasOne(TrackerSchedule::class, 'scheduleWeekId', 'scheduleWeekId');
+    }
 }
