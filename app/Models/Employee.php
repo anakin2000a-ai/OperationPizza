@@ -44,4 +44,8 @@ class Employee extends Model
     {
         return $this->hasMany(\App\Models\Deduction::class, 'employeeId');
     }
+    public function trackerDetails()
+    {
+        return $this->hasMany(TrackerDetail::class, 'employeeId');
+    }
 } 

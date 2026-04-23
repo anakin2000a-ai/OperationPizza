@@ -12,12 +12,11 @@ return new class extends Migration
              $table->unsignedBigInteger('scorecardId');  // Foreign Key for score_card
             $table->float('loanAmount');
             $table->float('deductions');
-            $table->float('taxes');
-            $table->float('finalSalary');
-            $table->boolean('IsapprovedByThirdShiftStoreManager');
-             $table->unsignedBigInteger('approvedByThirdShiftStoreManagerId');   
-             $table->boolean('IsapprovedBySeniorManager');
-            $table->unsignedBigInteger('approvedBySeniorManagerId');   
+             $table->float('finalSalary');
+            $table->boolean('IsapprovedByThirdShiftStoreManager')->default(false) ;
+             $table->unsignedBigInteger('approvedByThirdShiftStoreManagerId')->nullable();   
+             $table->boolean('IsapprovedBySeniorManager')->default(false) ;
+            $table->unsignedBigInteger('approvedBySeniorManagerId')->nullable();   
 
  
             $table->timestamp('paymentDate')->nullable();

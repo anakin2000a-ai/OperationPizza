@@ -3,15 +3,21 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-
+ 
+ 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
         $this->call([
-            UserSeeder::class,
-            StoreSeeder::class,
+            // UserSeeder::class,
+            // StoreSeeder::class,
             // EmployeeSeeder::class,
+
+            // AvailabilitySeeder::class,
+            // AvailabilityTimeSeeder::class,
+            SchedulesTableSeeder::class,
+            TrackerDetailsTableSeeder::class,
         ]);
     }
 }

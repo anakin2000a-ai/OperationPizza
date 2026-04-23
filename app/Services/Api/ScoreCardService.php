@@ -6,17 +6,101 @@ use App\Models\MasterSchedule;
 use App\Models\Schedule;
 use App\Models\ScoreCard;
 use App\Models\Employee;
+use App\Models\Store;
 use App\Models\TrackerDetail;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class ScoreCardService
 {
-    public function create(int $scheduleWeekId): array
+    public function index(string $store)
     {
-        return DB::transaction(function () use ($scheduleWeekId) {
+        $storeId = $this->resolveStoreId($store);
 
-            $master = MasterSchedule::findOrFail($scheduleWeekId);
+        return ScoreCard::with(['employee', 'masterSchedule'])
+            ->join('master_schedule', 'score_cards.scheduleWeekId', '=', 'master_schedule.id')
+            ->where('master_schedule.store_id', $storeId)
+            ->orderByDesc('score_cards.finalSalary') // 🔥 first
+            ->orderBy('master_schedule.store_id')    // 🔥 second
+            ->select('score_cards.*')
+            ->get();
+    }
+    public function show(string $store, int $id)
+    {
+        $storeId = $this->resolveStoreId($store);
+
+        return ScoreCard::with([
+            'employee',
+            'employee.trackerDetails',
+            'masterSchedule',
+            'masterSchedule.schedules'
+        ])
+        ->whereHas('masterSchedule', function ($q) use ($storeId) {
+            $q->where('store_id', $storeId);
+        })
+        ->findOrFail($id);
+    }
+    public function softDelete(string $store, int $id): void
+    {
+        $storeId = $this->resolveStoreId($store);
+
+        $score = ScoreCard::whereHas('masterSchedule', function ($q) use ($storeId) {
+            $q->where('store_id', $storeId);
+        })->findOrFail($id);
+
+        if ($score->ScoreCardStatus !== 'pending') {
+            throw new \Exception('Only pending score cards can be deleted');
+        }
+
+        $score->delete();
+    }
+    public function restore(string $store, int $id): void
+    {
+        $storeId = $this->resolveStoreId($store);
+
+        $score = ScoreCard::onlyTrashed()
+            ->whereHas('masterSchedule', function ($q) use ($storeId) {
+                $q->where('store_id', $storeId);
+            })
+            ->findOrFail($id);
+
+        if ($score->ScoreCardStatus !== 'pending') {
+            throw new \Exception('Only pending score cards can be restored');
+        }
+
+        $score->restore();
+    }
+    public function forceDelete(string $store, int $id): void
+    {
+        $storeId = $this->resolveStoreId($store);
+
+        $score = ScoreCard::withTrashed()
+            ->whereHas('masterSchedule', function ($q) use ($storeId) {
+                $q->where('store_id', $storeId);
+            })
+            ->findOrFail($id);
+
+        $score->forceDelete();
+    }
+    private function resolveStoreId(string $store): int
+    {
+        $storeModel = Store::where('store', $store)->first();
+
+        if (!$storeModel) {
+            throw new \Exception('Store not found');
+        }
+
+        return $storeModel->id;
+    }
+
+    //create score cards for a given schedule week and store
+    public function create(int $scheduleWeekId, int $storeId): array
+    {
+        return DB::transaction(function () use ($scheduleWeekId, $storeId) {
+
+           $master = MasterSchedule::where('id', $scheduleWeekId)
+            ->where('store_id', $storeId)
+            ->firstOrFail();
 
             $employees = Schedule::where('schedule_week_id', $scheduleWeekId)
                 ->whereNotNull('employee_id')
@@ -94,6 +178,14 @@ class ScoreCardService
                 $salary = $result['salary'];
                 $effectiveHours = $result['effectiveHours'];
                 $rateWithBonus = $result['rateWithBonus'];
+                $moneyOwed = $this->getTotalMoneyOwed(
+                    $employeeId,
+                    $master->start_date,
+                    $master->end_date
+                );
+
+                // add money owed to final salary
+                $salary += $moneyOwed;
 
                 // 🔥 FIXED PART ENDS HERE
 
@@ -113,6 +205,7 @@ class ScoreCardService
                 'trackerScore' => $trackerScore,
                 'rate' => $rate,
                 'rateWithBonus' => $rateWithBonus,
+                'moneyOwed' => $moneyOwed,
 
                 'taxAmount' => $taxAmount,
                 'finalSalary' => $salary,
@@ -255,5 +348,11 @@ class ScoreCardService
         }
 
         return $tax; // contains taxtype + taxAmount
+    }
+    private function getTotalMoneyOwed(int $employeeId, string $startDate, string $endDate): float
+    {
+        return (float) TrackerDetail::where('employeeId', $employeeId)
+            ->whereBetween('date', [$startDate, $endDate])
+            ->sum('moneyOwed');
     }
 }

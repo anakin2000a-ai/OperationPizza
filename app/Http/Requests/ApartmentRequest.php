@@ -13,7 +13,7 @@ class ApartmentRequest extends FormRequest
     {
         return [
             'Location' => 'required|string|max:255|unique:apartments,Location', // Validation for Location
-            'ApartmentRent' => 'required|numeric|min:100|max:500', // Validation for ApartmentRent
+            'ApartmentRent' => 'required|numeric|min:100|max:200', // Validation for ApartmentRent
       ];
     }
 

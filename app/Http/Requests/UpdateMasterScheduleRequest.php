@@ -82,7 +82,26 @@ class UpdateMasterScheduleRequest extends FormRequest
             'schedules.*.uniforms' => 'required_with:schedules.*.actual_start_time,schedules.*.actual_end_time|boolean',
             'schedules.*.commitmentToAttend' => 'required_with:schedules.*.actual_start_time,schedules.*.actual_end_time|boolean',
             'schedules.*.performance' => 'required_with:schedules.*.actual_start_time,schedules.*.actual_end_time|boolean',
-             ];
+            'schedules.*.moneyOwed' => [
+                'nullable',
+                'numeric',
+                'min:0',
+                'max:1000',
+            ],
+
+            'schedules.*.ReasonForMoneyOwed' => [
+                'nullable',
+                'string',
+            ],
+
+            'schedules.*' => [
+                function ($attribute, $value, $fail) {
+                    if (!empty($value['moneyOwed']) && empty($value['ReasonForMoneyOwed'])) {
+                        $fail('ReasonForMoneyOwed is required when moneyOwed is provided.');
+                    }
+                }
+            ],
+        ];
     }
 
     public function withValidator($validator): void
