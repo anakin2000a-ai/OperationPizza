@@ -90,7 +90,7 @@ class ScoreCardController extends Controller
             ], 422);
         }
     }
-      public function restore(string $store, int $id): JsonResponse
+    public function restore(string $store, int $id): JsonResponse
     {
         try {
             $this->service->restore($store, $id);

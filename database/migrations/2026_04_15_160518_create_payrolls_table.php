@@ -27,7 +27,7 @@ return new class extends Migration
             // Foreign Key Constraints
             $table->foreign('approvedByThirdShiftStoreManagerId')->references('id')->on('users')->onDelete('restrict');
             $table->foreign('approvedBySeniorManagerId')->references('id')->on('users')->onDelete('restrict');
-            $table->foreign('scorecardId')->references('id')->on('score_cards')->onDelete('restrict');
+            $table->foreign('scorecardId')->references('id')->on('score_cards')->onDelete('cascade');
         });
     }
 

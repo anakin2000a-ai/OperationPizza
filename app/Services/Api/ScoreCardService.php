@@ -6,6 +6,7 @@ use App\Models\MasterSchedule;
 use App\Models\Schedule;
 use App\Models\ScoreCard;
 use App\Models\Employee;
+use App\Models\Payroll;
 use App\Models\Store;
 use App\Models\TrackerDetail;
 use Carbon\Carbon;
@@ -52,6 +53,12 @@ class ScoreCardService
             throw new \Exception('Only pending score cards can be deleted');
         }
 
+        // 🔥 Delete payroll if exists
+        $payroll = Payroll::where('scorecardId', $score->id)->first();
+        if ($payroll && $payroll->paymentStatus === 'pending') {
+            $payroll->delete();
+        }
+
         $score->delete();
     }
     public function restore(string $store, int $id): void
@@ -69,6 +76,15 @@ class ScoreCardService
         }
 
         $score->restore();
+
+        // 🔥 Restore payroll
+        $payroll = Payroll::onlyTrashed()
+            ->where('scorecardId', $score->id)
+            ->first();
+
+        if ($payroll) {
+            $payroll->restore();
+        }
     }
     public function forceDelete(string $store, int $id): void
     {
@@ -80,8 +96,22 @@ class ScoreCardService
             })
             ->findOrFail($id);
 
+        // 🔥 Force delete payroll first (important order)
+        $payroll = Payroll::withTrashed()
+            ->where('scorecardId', $score->id)
+            ->first();
+
+        if ($payroll) {
+            if ($payroll->paymentStatus !== 'pending') {
+                throw new \Exception('Cannot force delete payroll unless pending');
+            }
+
+            $payroll->forceDelete();
+        }
+
         $score->forceDelete();
     }
+     
     private function resolveStoreId(string $store): int
     {
         $storeModel = Store::where('store', $store)->first();
