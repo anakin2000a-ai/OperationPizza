@@ -16,8 +16,8 @@ return new class extends Migration
                 $table->string('name');
                 $table->string('email')->unique();
                 $table->string('password');
-                $table->enum('role', ['SecondShiftStoreManager', 'ThirdShiftStoreManager', 'SeniorManager', 'Admin', 'Employee'])->default('Employee');
-
+                $table->enum('role', ['SecondShiftStoreManager', 'ThirdShiftStoreManager', 'SeniorManager' ])->default('SecondShiftStoreManager');
+                $table->foreignId('store_id')->nullable()->constrained('stores')->nullOnDelete();
                 $table->rememberToken();
                 $table->timestamps();
             });

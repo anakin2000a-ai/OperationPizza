@@ -24,7 +24,9 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'role',
+        'role',        
+        'store_id',
+
     ];
 
     protected $hidden = [
@@ -48,5 +50,22 @@ class User extends Authenticatable
     public function scheduleTemplates()
     {
         return $this->hasMany(ScheduleTemplate::class, 'created_by');
+    }
+    public function store()
+    {
+        return $this->belongsTo(Store::class, 'store_id');
+    }
+
+    public function isSeniorManager(): bool
+    {
+        return $this->role === 'SeniorManager';
+    }
+
+    public function isStoreManager(): bool
+    {
+        return in_array($this->role, [
+            'SecondShiftStoreManager',
+            'ThirdShiftStoreManager',
+        ]);
     }
 }
