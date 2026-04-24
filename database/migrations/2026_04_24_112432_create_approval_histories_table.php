@@ -27,7 +27,10 @@ return new class extends Migration
                 'senior'
             ]);
 
-            $table->enum('status', ['approved']);
+            $table->enum('status', [
+                'approved',
+                'rejected'
+            ])->default('approved');
 
             $table->text('comment')->nullable();
 
