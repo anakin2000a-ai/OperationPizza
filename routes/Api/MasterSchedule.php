@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\MasterScheduleController;
+use App\Http\Controllers\Api\ScheduleAIController;
 
 Route::middleware('auth:sanctum',\App\Http\Middleware\CheckStoreAccess::class)->group(function () {
     Route::prefix('stores/{store}')->group(function () {
@@ -33,5 +34,10 @@ Route::middleware('auth:sanctum',\App\Http\Middleware\CheckStoreAccess::class)->
 
 
         Route::post('master-schedules/copy', [MasterScheduleController::class, 'copyWeek']);//copy week's schedule
+
+
+
+
+        Route::post('schedule/auto-generate', [ScheduleAIController::class, 'generate']);
     });
 }); 
