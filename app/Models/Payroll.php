@@ -11,7 +11,7 @@ class Payroll extends Model
     use SoftDeletes;
     protected $fillable = [
         'employeeId', 'scorecardId', 'loanAmount','loanRentAmount', 'deductions', 'deductionReason',
-        'finalSalary', 'approvedByThirdShiftStoreManager', 'approvedBySeniorManager','approvedBySeniorManagerId', 'approvedByThirdShiftStoreManagerId',
+        'finalSalary', 
         'paymentDate', 'paymentStatus'
     ];
 
@@ -20,5 +20,9 @@ class Payroll extends Model
     public function scoreCard()
     {
         return $this->belongsTo(ScoreCard::class, 'scorecardId');
+    }
+    public function approvalHistories()
+    {
+        return $this->hasMany(ApprovalHistory::class, 'payroll_id');
     }
 }

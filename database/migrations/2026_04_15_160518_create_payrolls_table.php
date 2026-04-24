@@ -18,10 +18,10 @@ return new class extends Migration
 
 
             $table->float('finalSalary');
-            $table->boolean('IsapprovedByThirdShiftStoreManager')->default(false) ;
-            $table->unsignedBigInteger('approvedByThirdShiftStoreManagerId')->nullable();   
-            $table->boolean('IsapprovedBySeniorManager')->default(false) ;
-            $table->unsignedBigInteger('approvedBySeniorManagerId')->nullable();   
+            // $table->boolean('IsapprovedByThirdShiftStoreManager')->default(false) ;
+            // $table->unsignedBigInteger('approvedByThirdShiftStoreManagerId')->nullable();   
+            // $table->boolean('IsapprovedBySeniorManager')->default(false) ;
+            // $table->unsignedBigInteger('approvedBySeniorManagerId')->nullable();   
 
  
             $table->timestamp('paymentDate')->nullable();
@@ -30,8 +30,8 @@ return new class extends Migration
             $table->softDeletes(); // For soft deletes
 
             // Foreign Key Constraints
-            $table->foreign('approvedByThirdShiftStoreManagerId')->references('id')->on('users')->onDelete('restrict');
-            $table->foreign('approvedBySeniorManagerId')->references('id')->on('users')->onDelete('restrict');
+            // $table->foreign('approvedByThirdShiftStoreManagerId')->references('id')->on('users')->onDelete('restrict');
+            // $table->foreign('approvedBySeniorManagerId')->references('id')->on('users')->onDelete('restrict');
             $table->foreign('scorecardId')->references('id')->on('score_cards')->onDelete('cascade');
         });
     }
