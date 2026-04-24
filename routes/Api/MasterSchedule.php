@@ -39,5 +39,7 @@ Route::middleware('auth:sanctum',\App\Http\Middleware\CheckStoreAccess::class)->
 
 
         Route::post('schedule/auto-generate', [ScheduleAIController::class, 'generate']);
+        Route::post('schedule/suggestions', [ScheduleAIController::class, 'getSuggestions']);
+
     });
 }); 
