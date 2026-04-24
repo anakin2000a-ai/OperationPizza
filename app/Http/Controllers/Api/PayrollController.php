@@ -2,6 +2,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ApprovePayrollRequest;
 use App\Http\Requests\CreatePayrollRequest;
 use App\Http\Requests\StoreManagerPayrollIndexRequest;
 use App\Models\Store;
@@ -113,51 +114,105 @@ class PayrollController extends Controller
 
     // Approve by Third Shift Store Manager
    
-    public function approveByThirdShiftStoreManager(Store $store, $id): JsonResponse
+    // public function approveByThirdShiftStoreManager(Store $store, $id): JsonResponse
+    // {
+    //     try {
+    //         if (!is_numeric($id) || (int)$id <= 0) {
+    //             return response()->json([
+    //                 'message' => 'Invalid payroll id'
+    //             ], 422);
+    //         }
+
+    //         $this->payrollService->approveByThirdShiftStoreManager((int)$id);
+
+    //         return response()->json([
+    //             'success' => true,
+    //             'message' => 'Approved by Third Shift Store Manager'
+    //         ]);
+
+    //     } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+    //         return response()->json([
+    //             'message' => 'Payroll not found'
+    //         ], 404);
+    //     } catch (\Throwable $e) {
+    //         return response()->json([
+    //             'message' => 'Approval failed',
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+    public function approveByThirdShiftStoreManager(ApprovePayrollRequest $request, Store $store): JsonResponse
     {
         try {
-            if (!is_numeric($id) || (int)$id <= 0) {
-                return response()->json([
-                    'message' => 'Invalid payroll id'
-                ], 422);
-            }
-
-            $this->payrollService->approveByThirdShiftStoreManager((int)$id);
+            $this->payrollService->handleThirdShiftDecision(
+                (int) $request->route('id'),
+                $request->input('action'),
+                $request->input('comment')
+            );
 
             return response()->json([
                 'success' => true,
-                'message' => 'Approved by Third Shift Store Manager'
+                'message' => 'Third Shift decision processed'
             ]);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return response()->json([
-                'message' => 'Payroll not found'
-            ], 404);
+            return response()->json(['message' => 'Payroll not found'], 404);
+
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 400);
+
         } catch (\Throwable $e) {
             return response()->json([
-                'message' => 'Approval failed',
+                'message' => 'Operation failed',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
 
     // Approve by Senior Manager
-    public function approveBySeniorManager($id): JsonResponse
+    // public function approveBySeniorManager($id): JsonResponse
+    // {
+    //     try {
+    //         $this->payrollService->approveBySeniorManager((int) $id);
+
+    //         return response()->json([
+    //             'success' => true,
+    //             'message' => 'Approved by Senior Manager'
+    //         ]);
+    //     } catch (Throwable $e) {
+    //         return response()->json([
+    //             'message' => 'Approval failed',
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+    public function approveBySeniorManager(ApprovePayrollRequest $request): JsonResponse
     {
         try {
-            $this->payrollService->approveBySeniorManager((int) $id);
+            $this->payrollService->handleSeniorDecision(
+                (int) $request->route('id'),
+                $request->input('action'),
+                $request->input('comment')
+            );
 
             return response()->json([
                 'success' => true,
-                'message' => 'Approved by Senior Manager'
+                'message' => 'Senior Manager decision processed'
             ]);
-        } catch (Throwable $e) {
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['message' => 'Payroll not found'], 404);
+
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 400);
+
+        } catch (\Throwable $e) {
             return response()->json([
-                'message' => 'Approval failed',
+                'message' => 'Operation failed',
                 'error' => $e->getMessage()
             ], 500);
         }
-    }
+    }   
     public function deleteByStore(Store $store, int $id): JsonResponse
     {
         try {

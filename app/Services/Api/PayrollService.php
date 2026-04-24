@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\PayrollApprovedMail;
 use App\Models\Apartment;
+use App\Models\ApprovalHistory;
 use App\Models\Deduction;
 use App\Models\EmployeeLoan;
 use App\Models\Loan;
@@ -552,6 +553,121 @@ class PayrollService
     //     }
     // }
 
+       // Approve payroll by Third Shift Store Manager
+   
+    public function handleThirdShiftDecision(int $payrollId, string $action, ?string $comment): void
+    {
+        DB::transaction(function () use ($payrollId, $action, $comment) {
+
+            $payroll = Payroll::findOrFail($payrollId);
+
+            if ($payroll->paymentStatus !== 'pending') {
+                throw new \Exception('Cannot process, payment is not pending.');
+            }
+
+            $exists = ApprovalHistory::where('payroll_id', $payrollId)
+                ->where('role', 'third_shift')
+                ->exists();
+
+            if ($exists) {
+                throw new \Exception('Already processed by third shift.');
+            }
+
+            ApprovalHistory::create([
+                'payroll_id' => $payrollId,
+                'approved_by' => auth()->id(),
+                'role' => 'third_shift',
+                'status' => $action === 'approve' ? 'approved' : 'rejected',
+                'comment' => $comment,
+                'approved_at' => now(),
+            ]);
+
+            // 🔥 if rejected → stop flow
+            if ($action === 'reject') {
+                $payroll->paymentStatus = 'failed';
+                $payroll->save();
+            }
+        });
+    }
+    // Approve payroll by Senior Manager
+
+    public function handleSeniorDecision(int $payrollId, string $action, ?string $comment): void
+    {
+        DB::transaction(function () use ($payrollId, $action, $comment) {
+
+            $payroll = Payroll::with('scoreCard.employee')->findOrFail($payrollId);
+
+            if ($payroll->paymentStatus !== 'pending') {
+                throw new \Exception('Cannot process, payment is not pending.');
+            }
+
+            $thirdApproved = ApprovalHistory::where('payroll_id', $payrollId)
+                ->where('role', 'third_shift')
+                ->where('status', 'approved')
+                ->exists();
+
+            if (!$thirdApproved) {
+                throw new \Exception('Third shift approval required first.');
+            }
+
+            $exists = ApprovalHistory::where('payroll_id', $payrollId)
+                ->where('role', 'senior')
+                ->exists();
+
+            if ($exists) {
+                throw new \Exception('Already processed by senior manager.');
+            }
+
+            ApprovalHistory::create([
+                'payroll_id' => $payrollId,
+                'approved_by' => auth()->id(),
+                'role' => 'senior',
+                'status' => $action === 'approve' ? 'approved' : 'rejected',
+                'comment' => $comment,
+                'approved_at' => now(),
+            ]);
+
+            if ($action === 'reject') {
+                $payroll->paymentStatus = 'failed';
+                $payroll->save();
+                return;
+            }
+
+            // ✅ FINAL APPROVAL
+            $payroll->paymentStatus = 'paid';
+            $payroll->paymentDate = now();
+            $payroll->save();
+
+            if ($payroll->scoreCard) {
+                $payroll->scoreCard->ScoreCardStatus = 'paid';
+                $payroll->scoreCard->save();
+            }
+            //🔥 Send Notification + Email
+            $employee = $payroll->scoreCard->employee ?? null;
+
+            if ($employee && $employee->email) {
+
+                $mailData = [
+                    'hours' => $payroll->scoreCard->totalHoursWorked,
+                    'deductions' => $payroll->deductions,
+                    'loan' => $payroll->loanAmount,
+                    'salary' => $payroll->finalSalary,
+                ];
+
+                // Save notification in DB
+                Notification::create([
+                    'employee_id' => $employee->id,
+                    'type' => 'payroll_approved',
+                    'message' => json_encode($mailData),
+                ]);
+
+                // Send email
+                Mail::to($employee->email)->send(
+                    new PayrollApprovedMail($mailData)
+                );
+            }
+        });
+    }
  
     public function getPayrolls(?int $storeId, array $filters)
     {
@@ -599,70 +715,11 @@ class PayrollService
             })
             ->firstOrFail();
     }
-    // Approve payroll by Third Shift Store Manager
-    public function approveByThirdShiftStoreManager(int $payrollId): void
-    {
-        $payroll = Payroll::findOrFail($payrollId);
+ 
+  
 
-        if ($payroll->paymentStatus !== 'pending') {
-            throw new \Exception('Cannot approve, the payment status is not pending.');
-        }
-
-        $payroll->IsapprovedByThirdShiftStoreManager = true;
-        $payroll->approvedByThirdShiftStoreManagerId = auth()->id();
-        $payroll->save();
-    }
-
-    // Approve payroll by Senior Manager
-    public function approveBySeniorManager(int $payrollId): void
-    {
-        DB::transaction(function () use ($payrollId) {
-
-            $payroll = Payroll::with('scoreCard.employee')->findOrFail($payrollId);
-
-            if ($payroll->paymentStatus !== 'pending') {
-                throw new \Exception('Cannot approve, the payment status is not pending.');
-            }
-
-            // Update payroll
-            $payroll->IsapprovedBySeniorManager = true;
-            $payroll->approvedBySeniorManagerId = auth()->id();
-            $payroll->paymentStatus = 'paid';
-            $payroll->paymentDate = now();
-            $payroll->save();
-
-            // Update scorecard
-            if ($payroll->scoreCard) {
-                $payroll->scoreCard->ScoreCardStatus = 'paid';
-                $payroll->scoreCard->save();
-            }
-
-            // 🔥 Send Notification + Email
-            $employee = $payroll->scoreCard->employee ?? null;
-
-            if ($employee && $employee->email) {
-
-                $mailData = [
-                    'hours' => $payroll->scoreCard->totalHoursWorked,
-                    'deductions' => $payroll->deductions,
-                    'loan' => $payroll->loanAmount,
-                    'salary' => $payroll->finalSalary,
-                ];
-
-                // Save notification in DB
-                Notification::create([
-                    'employee_id' => $employee->id,
-                    'type' => 'payroll_approved',
-                    'message' => json_encode($mailData),
-                ]);
-
-                // Send email
-                Mail::to($employee->email)->send(
-                    new PayrollApprovedMail($mailData)
-                );
-            }
-        });
-    }
+     
+    
     public function deletePayroll(?int $storeId, int $payrollId): void
     {
         $payroll = Payroll::query()
