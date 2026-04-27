@@ -7,6 +7,7 @@ use App\Models\ScoreCard;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\PayrollApprovedMail;
+use App\Mail\SalaryMismatchMail;
 use App\Models\Apartment;
 use App\Models\ApprovalHistory;
 use App\Models\Deduction;
@@ -14,6 +15,7 @@ use App\Models\EmployeeLoan;
 use App\Models\Loan;
 use App\Models\Notification;
 use App\Models\Sim;
+use App\Models\User;
 
 class PayrollService
 {
@@ -589,6 +591,7 @@ class PayrollService
             }
         });
     }
+ 
     // Approve payroll by Senior Manager
 
     public function handleSeniorDecision(int $payrollId, string $action, ?string $comment): void
