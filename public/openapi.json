@@ -197,6 +197,204 @@
           }
         }
       },
+       "Apartment": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "Location": { "type": "string", "example": "newyrk", "description": "Lowercased, spaces removed" },
+          "ApartmentRent": { "type": "number", "format": "float", "example": 100 },
+          "createdBy": { "type": "integer", "example": 1 },
+          "editedBy": { "type": "integer", "nullable": true, "example": 1 },
+          "created_at": { "type": "string", "format": "date-time", "example": "2026-04-27T13:06:47.000000Z" },
+          "updated_at": { "type": "string", "format": "date-time", "example": "2026-04-27T13:07:16.000000Z" },
+          "deleted_at": { "type": "string", "format": "date-time", "nullable": true, "example": null }
+        }
+      },
+      "Sim": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "SimCardType": { "type": "string", "example": "zain", "description": "Lowercase, no spaces, unique" },
+          "simCardInstallment": { "type": "number", "format": "float", "example": 22 },
+          "createdBy": { "type": "integer", "example": 1 },
+          "editedBy": { "type": "integer", "nullable": true, "example": 1 },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" },
+          "deleted_at": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "Tax": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "taxAmount": { "type": "number", "format": "float", "example": 33 },
+          "taxtype": { "type": "string", "enum": ["w2", "1099"], "example": "1099" },
+          "createdBy": { "type": "integer", "example": 1 },
+          "editedBy": { "type": "integer", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" },
+          "deleted_at": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "Loan": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 2 },
+          "loanName": { "type": "string", "example": "phone Loan 121" },
+          "loanAmount": { "type": "number", "format": "float", "example": 500 },
+          "taxValue": { "type": "number", "format": "float", "example": 10 },
+          "loanAmountWithTax": { "type": "number", "format": "float", "example": 550 },
+          "loanType": { "type": "string", "enum": ["phone", "car"], "example": "phone" },
+          "createdBy": { "type": "integer", "example": 1 },
+          "editedBy": { "type": "integer", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" },
+          "deleted_at": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "EmployeeLoan": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "employeeId": { "type": "integer", "example": 1 },
+          "loansId": { "type": "integer", "example": 3 },
+          "loanStatus": { "type": "string", "enum": ["active", "completed"], "example": "active" },
+          "loanStartDate": { "type": "string", "format": "date-time" },
+          "loanRentAmount": { "type": "number", "format": "float", "example": 825 },
+          "createdBy": { "type": "integer", "example": 1 },
+          "editedBy": { "type": "integer", "nullable": true },
+          "deletedBy": { "type": "integer", "nullable": true },
+          "ReasonForDeletion": { "type": "string", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" },
+          "deleted_at": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "Employee": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "store_id": { "type": "integer", "example": 1 },
+          "FirstName": { "type": "string", "example": "John" },
+          "LastName": { "type": "string", "example": "Doe" },
+          "HaveCar": { "type": "boolean", "example": true },
+          "phone": { "type": "string", "example": "123456789" },
+          "email": { "type": "string", "format": "email", "example": "john@example.com" },
+          "hire_date": { "type": "string", "format": "date", "example": "2026-04-21" },
+          "status": { "type": "string", "enum": ["hired", "termination", "resignation", "OJE"], "example": "hired" },
+          "Nationality": { "type": "string", "example": "American" },
+          "position": { "type": "string", "example": "CrowMember" },
+          "ApartmentId": { "type": "integer", "nullable": true },
+          "SimId": { "type": "integer", "nullable": true },
+          "taxesId": { "type": "integer", "nullable": true },
+          "taxes": { "type": "array", "items": { "$ref": "#/components/schemas/Tax" } },
+          "deductions": { "type": "array", "items": { "type": "object" } },
+          "skills": { "type": "array", "items": { "type": "object" } }
+        }
+      },
+      "ScoreCard": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "employeeId": { "type": "integer", "example": 1 },
+          "scheduleWeekId": { "type": "integer", "example": 1 },
+          "totalHoursWorked": { "type": "number", "format": "float", "example": 52 },
+          "trackerScore": { "type": "number", "format": "float", "example": 75 },
+          "finalSalary": { "type": "number", "format": "float", "example": 606 },
+          "ScoreCardStatus": { "type": "string", "enum": ["pending", "paid"], "example": "pending" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" },
+          "deleted_at": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "Payroll": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "scorecardId": { "type": "integer", "example": 1 },
+          "finalSalary": { "type": "number", "format": "float", "example": 650.25 },
+          "paymentStatus": { "type": "string", "enum": ["pending", "paid", "overdue", "failed"], "example": "pending" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" },
+          "deleted_at": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "MasterSchedule": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "store_id": { "type": "integer", "example": 1 },
+          "start_date": { "type": "string", "format": "date", "example": "2026-04-22" },
+          "end_date": { "type": "string", "format": "date", "example": "2026-04-28" },
+          "created_by": { "type": "integer", "example": 1 },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      }, "ScheduleEntry": {
+        "type": "object",
+        "properties": {
+          "employee_id": { "type": "integer", "example": 1 },
+          "date": { "type": "string", "format": "date", "example": "2026-04-22" },
+          "shift": { "type": "string", "example": "10:00:00-17:00:00" },
+          "score": { "type": "number", "format": "float", "example": 74.5 }
+        }
+      },
+      "ScheduleSuggestion": {
+        "type": "object",
+        "properties": {
+          "day": { "type": "string", "example": "tuesday" },
+          "shift": { "type": "string", "example": "10:00:00-17:00:00" },
+          "suggestions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "employee_id": { "type": "integer", "example": 1 },
+                "name": { "type": "string", "example": "Ahmad Ali" },
+                "skill_score": { "type": "number", "format": "float", "example": 75 },
+                "shift": { "type": "string", "example": "10:00:00-17:00:00" }
+              }
+            }
+          }
+        }
+      },
+      "ValidationError": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string", "example": "The given data was invalid." },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "example": { "Location": ["The location must be unique."] }
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": false },
+          "message": { "type": "string", "example": "An error occurred." }
+        }
+      },
+      "PaginationMeta": {
+        "type": "object",
+        "properties": {
+          "current_page": { "type": "integer", "example": 1 },
+          "first_page_url": { "type": "string" },
+          "from": { "type": "integer", "example": 1 },
+          "last_page": { "type": "integer", "example": 3 },
+          "last_page_url": { "type": "string" },
+          "next_page_url": { "type": "string", "nullable": true },
+          "path": { "type": "string" },
+          "per_page": { "type": "integer", "example": 10 },
+          "prev_page_url": { "type": "string", "nullable": true },
+          "to": { "type": "integer", "example": 10 },
+          "total": { "type": "integer", "example": 25 }
+        }
+      },
       "PaginationMeta": {
         "type": "object",
         "properties": {
@@ -241,6 +439,21 @@
         }
       }
     },
+    "parameters": {
+      "PerPage": {
+        "in": "query",
+        "name": "per_page",
+        "schema": { "type": "integer", "default": 10, "minimum": 1, "maximum": 50 },
+        "description": "Number of results per page (max 50)."
+      },
+      "StoreParam": {
+        "in": "path",
+        "name": "store",
+        "required": true,
+        "schema": { "type": "string", "example": "s1" },
+        "description": "Store identifier string (e.g., s1, s2)."
+      }
+    },
     "responses": {
       "Unauthenticated": {
         "description": "Unauthenticated - Bearer token missing or invalid",
@@ -276,6 +489,34 @@
             }
           }
         }
+      },
+      "Unauthorized": {
+        "description": "Unauthenticated – missing or invalid Bearer token.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": { "success": false, "message": "Unauthenticated." }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Forbidden – user does not have the required role.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": { "success": false, "message": "Forbidden." }
+          }
+        }
+      },
+      
+      "InternalServerError": {
+        "description": "Internal server error.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": { "success": false, "message": "An unexpected error occurred." }
+          }
+        }
       }
     }
   },
@@ -290,7 +531,17 @@
     { "name": "Employee Availabilities", "description": "Employee weekly availability management" },
     { "name": "Employees", "description": "Employee lookup" },
     { "name": "Master Schedules", "description": "Weekly master schedule management" },
-    { "name": "Schedule Templates", "description": "Save and load schedule templates" }
+    { "name": "Schedule Templates", "description": "Save and load schedule templates" },
+    { "name": "Apartments", "description": "Apartment unit management. Requires Senior Manager role." },
+    { "name": "SIM Cards", "description": "SIM card management. Requires Senior Manager role." },
+    { "name": "Taxes", "description": "Tax record management. Requires Senior Manager role." },
+    { "name": "Loans", "description": "Loan product management. Requires Senior Manager role." },
+    { "name": "Employee Loans", "description": "Employee–loan assignment management. Requires Senior Manager role." },
+    { "name": "Employees", "description": "Employee management scoped to a specific store. Requires Senior Manager role." },
+    { "name": "Score Cards", "description": "Score card management scoped to a store. Requires CheckStoreAccess role." },
+    { "name": "Payroll (Store Manager)", "description": "Store-scoped payroll management. Requires CheckStoreAccess role." },
+    { "name": "Payroll (Senior Manager)", "description": "Global payroll management. Requires Senior Manager role." },
+    { "name": "Schedule AI", "description": "AI-powered schedule generation and suggestions. Requires CheckStoreAccess role." }
   ],
   "paths": {
 
@@ -3179,6 +3430,1664 @@
           },
           "404": { "$ref": "#/components/responses/NotFound" },
           "401": { "$ref": "#/components/responses/Unauthenticated" }
+        }
+      }
+    }, "/apartments": {
+      "get": {
+        "tags": ["Apartments"],
+        "summary": "List all apartments",
+        "description": "Returns all apartments sorted by ID ascending.",
+        "operationId": "listApartments",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Apartment" }
+                    }
+                  }
+                },
+                "example": {
+                  "data": [
+                    {
+                      "id": 1, "Location": "newyrk", "ApartmentRent": 100,
+                      "createdBy": 1, "editedBy": 1,
+                      "created_at": "2026-04-27T13:06:47.000000Z",
+                      "updated_at": "2026-04-27T13:07:16.000000Z", "deleted_at": null
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      },
+      "post": {
+        "tags": ["Apartments"],
+        "summary": "Create a new apartment",
+        "description": "Creates an apartment unit. Location is automatically lowercased and spaces are removed before uniqueness validation. `createdBy` is set automatically from the authenticated user.",
+        "operationId": "createApartment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["Location", "ApartmentRent"],
+                "properties": {
+                  "Location": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "swa",
+                    "description": "Unique apartment location. Automatically lowercased and stripped of spaces."
+                  },
+                  "ApartmentRent": {
+                    "type": "number",
+                    "format": "float",
+                    "minimum": 100,
+                    "maximum": 500,
+                    "example": 150
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Apartment created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "data": { "$ref": "#/components/schemas/Apartment" }
+                  }
+                },
+                "example": {
+                  "message": "Apartment created successfully!",
+                  "data": { "Location": "swa", "ApartmentRent": 150, "createdBy": 1, "id": 1 }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error – e.g. duplicate location or rent out of range",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ValidationError" },
+                "example": {
+                  "message": "The given data was invalid.",
+                  "errors": {
+                    "Location": ["The location must be unique."],
+                    "ApartmentRent": ["The apartment rent must be at least 100.", "The apartment rent must not exceed 500."]
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+
+    "/apartments/{id}": {
+      "get": {
+        "tags": ["Apartments"],
+        "summary": "Get a single apartment",
+        "operationId": "showApartment",
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "example": 1 }
+        ],
+        "responses": {
+          "200": {
+            "description": "Apartment found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "data": { "$ref": "#/components/schemas/Apartment" } }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "put": {
+        "tags": ["Apartments"],
+        "summary": "Update an apartment",
+        "description": "All fields are optional. Location uniqueness is only re-checked if the value actually changes.",
+        "operationId": "updateApartment",
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "example": 1 }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "Location": { "type": "string", "maxLength": 255, "example": "newyrk" },
+                  "ApartmentRent": { "type": "number", "minimum": 100, "maximum": 500, "example": 100 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Apartment updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "data": { "$ref": "#/components/schemas/Apartment" }
+                  }
+                },
+                "example": {
+                  "message": "Apartment updated successfully!",
+                  "data": { "id": 1, "Location": "newyrk", "ApartmentRent": 100, "editedBy": 1 }
+                }
+              }
+            }
+          },
+          "422": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ValidationError" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      },
+      "delete": {
+        "tags": ["Apartments"],
+        "summary": "Soft-delete an apartment",
+        "operationId": "deleteApartment",
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "example": 1 }
+        ],
+        "responses": {
+          "200": {
+            "description": "Apartment soft-deleted",
+            "content": {
+              "application/json": {
+                "example": { "message": "Apartment soft deleted successfully!" }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+
+    "/apartments/{id}/restore": {
+      "post": {
+        "tags": ["Apartments"],
+        "summary": "Restore a soft-deleted apartment",
+        "operationId": "restoreApartment",
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "example": 1 }
+        ],
+        "responses": {
+          "200": {
+            "description": "Apartment restored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "data": { "$ref": "#/components/schemas/Apartment" }
+                  }
+                },
+                "example": { "message": "Apartment restored successfully!", "data": { "id": 1, "Location": "newyrk" } }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+
+    "/apartments/{id}/force-delete": {
+      "delete": {
+        "tags": ["Apartments"],
+        "summary": "Permanently delete an apartment",
+        "description": "Hard-deletes the record. This action is irreversible.",
+        "operationId": "forceDeleteApartment",
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "example": 1 }
+        ],
+        "responses": {
+          "200": {
+            "description": "Apartment permanently deleted",
+            "content": {
+              "application/json": {
+                "example": { "message": "Apartment permanently deleted!" }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+
+    "/sims": {
+      "get": {
+        "tags": ["SIM Cards"],
+        "summary": "List all SIM cards (paginated)",
+        "operationId": "listSims",
+        "parameters": [{ "$ref": "#/components/parameters/PerPage" }],
+        "responses": {
+          "200": {
+            "description": "Paginated list of SIM cards",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "data": {
+                      "allOf": [
+                        { "$ref": "#/components/schemas/PaginationMeta" },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "data": { "type": "array", "items": { "$ref": "#/components/schemas/Sim" } }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      },
+      "post": {
+        "tags": ["SIM Cards"],
+        "summary": "Create a SIM card",
+        "description": "SimCardType must be lowercase with no spaces and unique. simCardInstallment must be between 5 and 40.",
+        "operationId": "createSim",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["SimCardType", "simCardInstallment"],
+                "properties": {
+                  "SimCardType": { "type": "string", "pattern": "^[a-z]+$", "example": "zain" },
+                  "simCardInstallment": { "type": "number", "minimum": 5, "maximum": 40, "example": 15 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "SIM card created",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "message": "SIM card created successfully!",
+                  "data": { "id": 1, "SimCardType": "zain", "simCardInstallment": 15, "createdBy": 1 }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error – e.g. non-unique SimCardType or installment out of range",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ValidationError" },
+                "example": {
+                  "message": "The given data was invalid.",
+                  "errors": {
+                    "SimCardType": ["The SimCardType must be unique.", "SimCardType must be in lowercase and contain no spaces."],
+                    "simCardInstallment": ["The sim card installment must be at least 5.", "The sim card installment must not exceed 40."]
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+
+    "/sims/{id}": {
+      "put": {
+        "tags": ["SIM Cards"],
+        "summary": "Update a SIM card",
+        "operationId": "updateSim",
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "example": 1 }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "SimCardType": { "type": "string", "pattern": "^[a-z]+$", "example": "zain" },
+                  "simCardInstallment": { "type": "number", "minimum": 5, "maximum": 40, "example": 22 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "SIM card updated", "content": { "application/json": { "example": { "success": true, "message": "SIM card updated successfully!", "data": { "id": 1, "simCardInstallment": 22 } } } } },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "422": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ValidationError" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      },
+      "delete": {
+        "tags": ["SIM Cards"],
+        "summary": "Soft-delete a SIM card",
+        "description": "Fails with 422 if the SIM is assigned to an employee deduction.",
+        "operationId": "deleteSim",
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "example": 1 }],
+        "responses": {
+          "200": { "description": "Soft-deleted", "content": { "application/json": { "example": { "success": true, "message": "SIM card soft-deleted successfully!" } } } },
+          "422": { "description": "Cannot delete – SIM is assigned to an employee", "content": { "application/json": { "example": { "success": false, "message": "Cannot delete SIM because it is assigned to an employee deduction." } } } },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+
+    "/sims/{id}/restore": {
+      "post": {
+        "tags": ["SIM Cards"],
+        "summary": "Restore a soft-deleted SIM card",
+        "operationId": "restoreSim",
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "example": 1 }],
+        "responses": {
+          "200": { "description": "SIM card restored", "content": { "application/json": { "example": { "success": true, "message": "SIM card restored successfully!", "data": { "id": 1 } } } } },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+
+    "/sims/{id}/force-delete": {
+      "delete": {
+        "tags": ["SIM Cards"],
+        "summary": "Permanently delete a SIM card",
+        "description": "Fails with 422 if the SIM is assigned to an employee deduction.",
+        "operationId": "forceDeleteSim",
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "example": 1 }],
+        "responses": {
+          "200": { "description": "Permanently deleted", "content": { "application/json": { "example": { "success": true, "message": "SIM card permanently deleted!" } } } },
+          "422": { "description": "Cannot force delete – SIM is assigned to an employee", "content": { "application/json": { "example": { "success": false, "message": "Cannot permanently delete SIM because it is assigned to an employee deduction." } } } },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+
+    "/taxes": {
+      "get": {
+        "tags": ["Taxes"],
+        "summary": "List all taxes",
+        "description": "Returns all tax records sorted by created_at ascending.",
+        "operationId": "listTaxes",
+        "responses": {
+          "200": {
+            "description": "List of taxes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Tax" } } }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      },
+      "post": {
+        "tags": ["Taxes"],
+        "summary": "Create a tax record",
+        "description": "Only two tax types are allowed (w2, 1099) and each must be unique. taxAmount must be between 0 and 150.",
+        "operationId": "createTax",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["taxAmount", "taxtype"],
+                "properties": {
+                  "taxAmount": { "type": "number", "minimum": 0, "maximum": 150, "example": 20 },
+                  "taxtype": { "type": "string", "enum": ["w2", "1099"], "example": "1099" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Tax created", "content": { "application/json": { "example": { "message": "Tax created successfully!", "data": { "id": 1, "taxAmount": 20, "taxtype": "1099" } } } } },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ValidationError" },
+                "example": {
+                  "message": "The given data was invalid.",
+                  "errors": { "taxtype": ["Tax type must be unique.", "Tax type must be either \"w2\" or \"1099\"."] }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+
+    "/taxes/{id}": {
+      "get": {
+        "tags": ["Taxes"],
+        "summary": "Get a tax record by ID",
+        "operationId": "showTax",
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "example": 1 }],
+        "responses": {
+          "200": { "description": "Tax found", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Tax" } } } } } },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "put": {
+        "tags": ["Taxes"],
+        "summary": "Update a tax record",
+        "description": "Taxtype uniqueness is only validated if the value is being changed.",
+        "operationId": "updateTax",
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "example": 1 }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "taxAmount": { "type": "number", "minimum": 0, "maximum": 300, "example": 33 },
+                  "taxtype": { "type": "string", "enum": ["w2", "1099"], "example": "1099" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Tax updated", "content": { "application/json": { "example": { "message": "Tax updated successfully!", "data": { "id": 1, "taxAmount": 33 } } } } },
+          "422": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ValidationError" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      },
+      "delete": {
+        "tags": ["Taxes"],
+        "summary": "Soft-delete a tax record",
+        "operationId": "deleteTax",
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "example": 1 }],
+        "responses": {
+          "200": { "description": "Tax soft-deleted", "content": { "application/json": { "example": { "message": "Tax soft deleted successfully!" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+
+    "/taxes/{id}/restore": {
+      "post": {
+        "tags": ["Taxes"],
+        "summary": "Restore a soft-deleted tax record",
+        "operationId": "restoreTax",
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "example": 1 }],
+        "responses": {
+          "200": { "description": "Tax restored", "content": { "application/json": { "example": { "message": "Tax restored successfully!", "data": { "id": 1 } } } } },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+
+    "/taxes/{id}/force-delete": {
+      "delete": {
+        "tags": ["Taxes"],
+        "summary": "Permanently delete a tax record",
+        "operationId": "forceDeleteTax",
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "example": 1 }],
+        "responses": {
+          "200": { "description": "Tax permanently deleted", "content": { "application/json": { "example": { "message": "Tax permanently deleted!" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+
+    "/loans": {
+      "get": {
+        "tags": ["Loans"],
+        "summary": "List all loans (paginated, sorted by loanAmountWithTax desc)",
+        "operationId": "listLoans",
+        "parameters": [{ "$ref": "#/components/parameters/PerPage" }],
+        "responses": {
+          "200": {
+            "description": "Paginated list of loans",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "allOf": [
+                        { "$ref": "#/components/schemas/PaginationMeta" },
+                        { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Loan" } } } }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      },
+      "post": {
+        "tags": ["Loans"],
+        "summary": "Create a loan product",
+        "description": "loanType must be 'phone' or 'car'. Allowed amounts: **phone** → 250, 500, 750, 1000, 1250, 1500; **car** → 2500, 5000, 7500, 10000. The combination of loanType + loanAmount must be unique. taxValue must be between 5–20. `loanAmountWithTax` is calculated automatically as `loanAmount + (loanAmount * taxValue / 100)`.",
+        "operationId": "createLoan",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["loanName", "loanAmount", "taxValue", "loanType"],
+                "properties": {
+                  "loanName": { "type": "string", "maxLength": 255, "example": "phone Loan 4233" },
+                  "loanAmount": { "type": "number", "example": 750.0, "description": "Phone: 250|500|750|1000|1250|1500. Car: 2500|5000|7500|10000." },
+                  "taxValue": { "type": "number", "minimum": 5, "maximum": 20, "example": 10 },
+                  "loanType": { "type": "string", "enum": ["phone", "car"], "example": "phone" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Loan created", "content": { "application/json": { "example": { "success": true, "message": "Loan created successfully!", "data": { "id": 2, "loanName": "phone Loan 4233", "loanAmount": 750, "taxValue": 10, "loanAmountWithTax": 825, "loanType": "phone" } } } } },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ValidationError" },
+                "example": {
+                  "message": "The given data was invalid.",
+                  "errors": {
+                    "loanAmount": ["Phone loans must be one of: 250, 500, 750, 1000, 1250, 1500.", "This loanType with this loanAmount already exists."],
+                    "taxValue": ["Tax value must be between 5 and 20."],
+                    "loanType": ["Loan type must be phone or car."]
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+
+    "/loans/{id}": {
+      "get": {
+        "tags": ["Loans"],
+        "summary": "Get a loan by ID",
+        "operationId": "showLoan",
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "example": 2 }],
+        "responses": {
+          "200": { "description": "Loan found", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "$ref": "#/components/schemas/Loan" } } } } } },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "put": {
+        "tags": ["Loans"],
+        "summary": "Update a loan product",
+        "description": "All fields are optional. loanAmountWithTax is recalculated on update. Unchanged values are stripped before uniqueness checks.",
+        "operationId": "updateLoan",
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "example": 2 }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "loanName": { "type": "string", "maxLength": 255, "example": "phone Loan 121" },
+                  "loanAmount": { "type": "number", "example": 500 },
+                  "taxValue": { "type": "number", "minimum": 5, "maximum": 20, "example": 10 },
+                  "loanType": { "type": "string", "enum": ["phone", "car"], "example": "phone" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Loan updated", "content": { "application/json": { "example": { "success": true, "message": "Loan updated successfully!", "data": { "id": 2, "loanAmountWithTax": 550 } } } } },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "422": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ValidationError" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      },
+      "delete": {
+        "tags": ["Loans"],
+        "summary": "Soft-delete a loan",
+        "description": "Fails with 422 if the loan is assigned to any employee (including soft-deleted assignments).",
+        "operationId": "deleteLoan",
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "example": 2 }],
+        "responses": {
+          "200": { "description": "Loan soft-deleted", "content": { "application/json": { "example": { "success": true, "message": "Loan soft deleted successfully!" } } } },
+          "422": { "description": "Cannot delete – loan has employee assignments", "content": { "application/json": { "example": { "success": false, "message": "Cannot delete loan because it is assigned to employees." } } } },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+
+    "/loans/{id}/restore": {
+      "post": {
+        "tags": ["Loans"],
+        "summary": "Restore a soft-deleted loan",
+        "operationId": "restoreLoan",
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+        "responses": {
+          "200": { "description": "Loan restored", "content": { "application/json": { "example": { "success": true, "message": "Loan restored successfully!" } } } },
+          "422": { "description": "Loan is not currently deleted", "content": { "application/json": { "example": { "success": false, "message": "Loan is not deleted." } } } },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+
+    "/loans/{id}/force-delete": {
+      "delete": {
+        "tags": ["Loans"],
+        "summary": "Permanently delete a loan",
+        "description": "Fails with 422 if the loan is assigned to any employee.",
+        "operationId": "forceDeleteLoan",
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+        "responses": {
+          "200": { "description": "Loan permanently deleted", "content": { "application/json": { "example": { "success": true, "message": "Loan permanently deleted!" } } } },
+          "422": { "description": "Cannot force delete – loan has employee assignments", "content": { "application/json": { "example": { "success": false, "message": "Cannot permanently delete loan because it is assigned to employees." } } } },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+
+    "/employee-loans": {
+      "get": {
+        "tags": ["Employee Loans"],
+        "summary": "List all employee loan assignments (paginated, sorted by loanRentAmount desc)",
+        "operationId": "listEmployeeLoans",
+        "parameters": [{ "$ref": "#/components/parameters/PerPage" }],
+        "responses": {
+          "200": {
+            "description": "Paginated list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "allOf": [
+                        { "$ref": "#/components/schemas/PaginationMeta" },
+                        { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/EmployeeLoan" } } } }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      },
+      "post": {
+        "tags": ["Employee Loans"],
+        "summary": "Assign a loan to an employee",
+        "description": "An employee may only have **one active loan** at a time. loanStatus defaults to 'active'. loanRentAmount is copied from the Loan's loanAmountWithTax.",
+        "operationId": "createEmployeeLoan",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["employeeId", "loansId"],
+                "properties": {
+                  "employeeId": { "type": "integer", "example": 1 },
+                  "loansId": { "type": "integer", "example": 3 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Employee loan created", "content": { "application/json": { "example": { "success": true, "message": "Created successfully", "data": { "id": 1, "loanStatus": "active", "loanRentAmount": 825 } } } } },
+          "422": {
+            "description": "Business logic failure – employee already has an active loan",
+            "content": { "application/json": { "example": { "success": false, "message": "This employee already has an active loan." } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+
+    "/employee-loans/{id}": {
+      "get": {
+        "tags": ["Employee Loans"],
+        "summary": "Get an employee loan by ID",
+        "operationId": "showEmployeeLoan",
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+        "responses": {
+          "200": { "description": "Found", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "$ref": "#/components/schemas/EmployeeLoan" } } } } } },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "delete": {
+        "tags": ["Employee Loans"],
+        "summary": "Soft-delete an employee loan assignment",
+        "description": "A `ReasonForDeletion` is mandatory (max 1000 chars). Only active loans can be deleted.",
+        "operationId": "deleteEmployeeLoan",
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["ReasonForDeletion"],
+                "properties": {
+                  "ReasonForDeletion": { "type": "string", "maxLength": 1000, "example": "Employee resigned and loan was forgiven." }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Deleted", "content": { "application/json": { "example": { "success": true, "message": "Deleted successfully" } } } },
+          "422": {
+            "description": "Business logic error or validation failure",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "validationError": { "value": { "message": "The given data was invalid.", "errors": { "ReasonForDeletion": ["The reason for deletion field is required."] } } }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+
+    "/stores/{store}/employees": {
+      "get": {
+        "tags": ["Employees"],
+        "summary": "List employees in a store (paginated, sorted by FirstName asc)",
+        "operationId": "listEmployees",
+        "parameters": [
+          { "$ref": "#/components/parameters/StoreParam" },
+          { "$ref": "#/components/parameters/PerPage" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated employee list with taxes, deductions, and skills",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "allOf": [
+                        { "$ref": "#/components/schemas/PaginationMeta" },
+                        { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Employee" } } } }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      },
+      "post": {
+        "tags": ["Employees"],
+        "summary": "Create an employee in a store",
+        "description": "Email must be unique within the store. ApartmentId, SimId, and taxesId are optional foreign keys.",
+        "operationId": "createEmployee",
+        "parameters": [{ "$ref": "#/components/parameters/StoreParam" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["FirstName", "LastName", "HaveCar", "phone", "email", "hire_date", "status"],
+                "properties": {
+                  "FirstName": { "type": "string", "maxLength": 255, "example": "John" },
+                  "LastName": { "type": "string", "maxLength": 255, "example": "Doe" },
+                  "HaveCar": { "type": "boolean", "example": true },
+                  "phone": { "type": "string", "maxLength": 50, "example": "123456789" },
+                  "email": { "type": "string", "format": "email", "example": "john@example.com" },
+                  "hire_date": { "type": "string", "format": "date", "example": "2026-04-21" },
+                  "status": { "type": "string", "enum": ["hired", "termination", "resignation", "OJE"], "example": "hired" },
+                  "ApartmentId": { "type": "integer", "nullable": true },
+                  "SimId": { "type": "integer", "nullable": true },
+                  "taxesId": { "type": "integer", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Employee created", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "$ref": "#/components/schemas/Employee" } } } } } },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ValidationError" },
+                "example": {
+                  "message": "The given data was invalid.",
+                  "errors": {
+                    "email": ["The email has already been taken."],
+                    "status": ["The selected status is invalid."]
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+
+    "/stores/{store}/employees/{employeeId}": {
+      "get": {
+        "tags": ["Employees"],
+        "summary": "Get a single employee in a store",
+        "operationId": "showEmployee",
+        "parameters": [
+          { "$ref": "#/components/parameters/StoreParam" },
+          { "in": "path", "name": "employeeId", "required": true, "schema": { "type": "integer" }, "example": 1 }
+        ],
+        "responses": {
+          "200": { "description": "Employee found", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "$ref": "#/components/schemas/Employee" } } } } } },
+          "404": { "description": "Employee not found in this store", "content": { "application/json": { "example": { "success": false, "message": "Employee not found in this store" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "put": {
+        "tags": ["Employees"],
+        "summary": "Update an employee",
+        "description": "All fields are optional. Email uniqueness is scoped to the store. Validates that the employee belongs to the specified store.",
+        "operationId": "updateEmployee",
+        "parameters": [
+          { "$ref": "#/components/parameters/StoreParam" },
+          { "in": "path", "name": "employeeId", "required": true, "schema": { "type": "integer" }, "example": 1 }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "FirstName": { "type": "string" },
+                  "LastName": { "type": "string" },
+                  "HaveCar": { "type": "boolean" },
+                  "phone": { "type": "string" },
+                  "email": { "type": "string", "format": "email" },
+                  "hire_date": { "type": "string", "format": "date" },
+                  "status": { "type": "string", "enum": ["hired", "termination", "resignation", "OJE"] },
+                  "ApartmentId": { "type": "integer", "nullable": true },
+                  "SimId": { "type": "integer", "nullable": true },
+                  "taxesId": { "type": "integer", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Employee updated", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "$ref": "#/components/schemas/Employee" } } } } } },
+          "404": { "description": "Employee not found in this store", "content": { "application/json": { "example": { "success": false, "message": "Employee not found in this store" } } } },
+          "422": { "description": "Validation error or employee does not belong to store", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ValidationError" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      },
+      "delete": {
+        "tags": ["Employees"],
+        "summary": "Delete an employee from a store",
+        "operationId": "deleteEmployee",
+        "parameters": [
+          { "$ref": "#/components/parameters/StoreParam" },
+          { "in": "path", "name": "employeeId", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Deleted", "content": { "application/json": { "example": { "success": true, "message": "Employee deleted successfully" } } } },
+          "404": { "description": "Not found in this store", "content": { "application/json": { "example": { "success": false, "message": "Employee not found in this store" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+
+    "/stores/{store}/employees/{employeeId}/deductions": {
+      "delete": {
+        "tags": ["Employees"],
+        "summary": "Delete all deductions for an employee",
+        "operationId": "deleteEmployeeDeductions",
+        "parameters": [
+          { "$ref": "#/components/parameters/StoreParam" },
+          { "in": "path", "name": "employeeId", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Deductions deleted", "content": { "application/json": { "example": { "success": true, "message": "Employee deductions deleted successfully" } } } },
+          "404": { "description": "Employee or deductions not found", "content": { "application/json": { "example": { "success": false, "message": "Employee or deductions not found in this store" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+
+    "/stores/{store}/score-cards": {
+      "get": {
+        "tags": ["Score Cards"],
+        "summary": "List score cards for a store (sorted by finalSalary desc)",
+        "operationId": "listScoreCards",
+        "parameters": [{ "$ref": "#/components/parameters/StoreParam" }],
+        "responses": {
+          "200": {
+            "description": "List of score cards with employee and master schedule relations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/ScoreCard" } }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+
+    "/stores/{store}/score-cards/create": {
+      "post": {
+        "tags": ["Score Cards"],
+        "summary": "Generate score cards for a schedule week",
+        "description": "Creates score cards for all employees assigned in the given `schedule_week_id` that belong to the store. Salary is calculated using actual hours worked, tracker score (bonus if ≥75), nationality/position-based hourly rate, tax, and money owed. Overtime (>40h) is paid at 1.5×. Maximum final salary is capped at **$1,400**. Employees with missing actual times or tracker details will cause a 422 error.",
+        "operationId": "createScoreCards",
+        "parameters": [{ "$ref": "#/components/parameters/StoreParam" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["schedule_week_id"],
+                "properties": {
+                  "schedule_week_id": {
+                    "type": "integer",
+                    "description": "Must exist in master_schedule and belong to the specified store.",
+                    "example": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Score cards generated",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "created": [
+                      { "employeeId": 1, "totalHours": 48, "effectiveHours": 52, "trackerScore": 75, "rate": 13, "rateWithBonus": 14, "moneyOwed": 0, "taxAmount": 70, "finalSalary": 606 }
+                    ],
+                    "skipped": []
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation or business logic error",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "missingActualTimes": { "value": { "success": false, "message": "Failed to create score cards", "error": "Employee 1 has missing actual times on 2026-04-22" } },
+                  "missingTracker": { "value": { "success": false, "message": "Failed to create score cards", "error": "Employee 1 missing tracker details" } },
+                  "invalidScheduleWeek": { "value": { "message": "The given data was invalid.", "errors": { "schedule_week_id": ["The selected schedule_week_id is invalid."] } } }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+
+    "/stores/{store}/score-cards/{id}": {
+      "get": {
+        "tags": ["Score Cards"],
+        "summary": "Get a score card by ID",
+        "operationId": "showScoreCard",
+        "parameters": [
+          { "$ref": "#/components/parameters/StoreParam" },
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Score card with employee, tracker details, master schedule, and schedules", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "$ref": "#/components/schemas/ScoreCard" } } } } } },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "delete": {
+        "tags": ["Score Cards"],
+        "summary": "Soft-delete a score card",
+        "description": "Only **pending** score cards can be deleted. If a pending payroll is linked, it is also soft-deleted.",
+        "operationId": "softDeleteScoreCard",
+        "parameters": [
+          { "$ref": "#/components/parameters/StoreParam" },
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Deleted", "content": { "application/json": { "example": { "success": true, "message": "Deleted successfully" } } } },
+          "422": {
+            "description": "Cannot delete – score card is not pending or store mismatch",
+            "content": { "application/json": { "example": { "message": "Only pending score cards can be deleted" } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+
+    "/stores/{store}/score-cards/force/{id}": {
+      "delete": {
+        "tags": ["Score Cards"],
+        "summary": "Permanently delete a score card",
+        "description": "Also force-deletes any linked pending payroll. Fails if payroll is not in 'pending' status.",
+        "operationId": "forceDeleteScoreCard",
+        "parameters": [
+          { "$ref": "#/components/parameters/StoreParam" },
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Force deleted", "content": { "application/json": { "example": { "success": true, "message": "Force deleted successfully" } } } },
+          "422": { "description": "Cannot force delete – linked payroll is not pending", "content": { "application/json": { "example": { "message": "Cannot force delete payroll unless pending" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+
+    "/stores/{store}/score-cards/restore/{id}": {
+      "patch": {
+        "tags": ["Score Cards"],
+        "summary": "Restore a soft-deleted score card",
+        "description": "Only **pending** score cards can be restored. Also restores linked soft-deleted payroll if present.",
+        "operationId": "restoreScoreCard",
+        "parameters": [
+          { "$ref": "#/components/parameters/StoreParam" },
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Restored", "content": { "application/json": { "example": { "success": true, "message": "Restored successfully" } } } },
+          "422": { "description": "Cannot restore – score card status is not pending", "content": { "application/json": { "example": { "message": "Only pending score cards can be restored" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+
+    "/stores/{store}/payroll/create": {
+      "post": {
+        "tags": ["Payroll (Store Manager)"],
+        "summary": "Create a payroll entry from a score card",
+        "description": "Converts a score card into a payroll record. The score card must be in **pending** status and must not already have a payroll entry. finalSalary must be > 0.",
+        "operationId": "createPayroll",
+        "parameters": [{ "$ref": "#/components/parameters/StoreParam" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["scoreCardId"],
+                "properties": {
+                  "scoreCardId": {
+                    "type": "integer",
+                    "description": "Must reference an existing pending score card with finalSalary > 0 and no existing payroll.",
+                    "example": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Payroll created",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "message": "Payroll created successfully",
+                    "data": {
+                    "payroll": {
+                        "scorecardId": 1,
+                        "loanAmount": 825,
+                        "loanRentAmount": 9925,
+                        "deductions": 133.25,
+                        "deductionReason": "Deductions applied for apartment and sim card.",
+                        "finalSalary": 397.75,
+                        "paymentStatus": "pending",
+                        "updated_at": "2026-04-27T16:56:46.000000Z",
+                        "created_at": "2026-04-27T16:56:46.000000Z",
+                        "id": 2
+                    },
+                    "breakdown": {
+                        "loan_deduction": 75,
+                        "remaining_loan": 9925,
+                        "apartment_deduction": 125,
+                        "sim_deduction": 8.25,
+                        "deduction_reason": "Deductions applied for apartment and sim card."
+                    },
+                    "summary": {
+                        "final_salary": 397.75
+                    }
+                }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Business logic error",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "alreadyExists": { "value": { "success": false, "message": "A payroll entry already exists for this scorecard." } },
+                  "notPending": { "value": { "success": false, "message": "Payroll can only be created for pending score cards." } },
+                  "zeroSalary": { "value": { "success": false, "message": "Cannot create payroll for scorecard with zero or negative salary." } }
+                }
+              }
+            }
+          },
+          "422": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ValidationError" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+
+    "/stores/{store}/payroll/storemanagerindex": {
+      "get": {
+        "tags": ["Payroll (Store Manager)"],
+        "summary": "List payrolls for a specific store",
+        "description": "Supports optional filtering by paymentStatus and date range.",
+        "operationId": "listPayrollByStore",
+        "parameters": [
+          { "$ref": "#/components/parameters/StoreParam" },
+          { "in": "query", "name": "paymentStatus", "schema": { "type": "string", "enum": ["paid", "pending", "overdue", "failed"] } },
+          { "in": "query", "name": "start_date", "schema": { "type": "string", "format": "date" } },
+          { "in": "query", "name": "end_date", "schema": { "type": "string", "format": "date" }, "description": "Must be on or after start_date." },
+          { "$ref": "#/components/parameters/PerPage" }
+        ],
+        "responses": {
+          "200": { "description": "Payroll list", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "type": "object", 
+          "example": {
+                  "success": true,
+                  "message": "Payroll created successfully",
+                 "data": [
+                  {
+                      "id": 2,
+                      "scorecardId": 1,
+                      "loanAmount": 825,
+                      "loanRentAmount": "9925.00",
+                      "deductions": 133.25,
+                      "deductionReason": "Deductions applied for apartment and sim card.",
+                      "finalSalary": 397.75,
+                      "paymentDate": null,
+                      "paymentStatus": "pending",
+                      "created_at": "2026-04-27T16:56:46.000000Z",
+                      "updated_at": "2026-04-27T16:56:46.000000Z",
+                      "deleted_at": null
+                  }
+              ]
+                } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+
+    "/stores/{store}/payroll/storemanagershow/{id}": {
+      "get": {
+        "tags": ["Payroll (Store Manager)"],
+        "summary": "Get a payroll entry by ID (store-scoped)",
+        "operationId": "showPayrollByStore",
+        "parameters": [
+          { "$ref": "#/components/parameters/StoreParam" },
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Payroll found", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "$ref": "#/components/schemas/Payroll" } } } } } },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+
+    "/stores/{store}/payroll/approve-third-shift/{id}": {
+      "patch": {
+        "tags": ["Payroll (Store Manager)"],
+        "summary": "Third Shift Store Manager: approve or reject a payroll entry",
+        "description": "If `action` is 'reject', a `comment` is required. This is a two-step approval flow; Senior Manager approval is a separate step.",
+        "operationId": "approvePayrollThirdShift",
+        "parameters": [
+          { "$ref": "#/components/parameters/StoreParam" },
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["action"],
+                "properties": {
+                  "action": { "type": "string", "enum": ["approve", "reject"], "example": "approve" },
+                  "comment": { "type": "string", "maxLength": 1000, "example": "Looks good.", "description": "Required when action is 'reject'." }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Decision processed", "content": { "application/json": { "example": { "success": true, "message": "Third Shift decision processed" } } } },
+          "400": { "description": "Business logic error", "content": { "application/json": { "example": { "message": "Comment is required when rejecting." } } } },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+
+    "/stores/{store}/payroll/softdelete/{id}": {
+      "delete": {
+        "tags": ["Payroll (Store Manager)"],
+        "summary": "Soft-delete a payroll entry (store-scoped)",
+        "operationId": "softDeletePayrollByStore",
+        "parameters": [
+          { "$ref": "#/components/parameters/StoreParam" },
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Soft deleted", "content": { "application/json": { "example": { "success": true, "message": "Payroll soft deleted" } } } },
+          "400": { "description": "Delete failed", "content": { "application/json": { "example": { "message": "Delete failed" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+
+    "/stores/{store}/payroll/restore/{id}": {
+      "patch": {
+        "tags": ["Payroll (Store Manager)"],
+        "summary": "Restore a soft-deleted payroll entry (store-scoped)",
+        "operationId": "restorePayrollByStore",
+        "parameters": [
+          { "$ref": "#/components/parameters/StoreParam" },
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Restored", "content": { "application/json": { "example": { "success": true, "message": "Payroll restored" } } } },
+          "400": { "description": "Restore failed", "content": { "application/json": { "example": { "message": "Restore failed" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+
+    "/stores/{store}/payroll/force/{id}": {
+      "delete": {
+        "tags": ["Payroll (Store Manager)"],
+        "summary": "Permanently delete a payroll entry (store-scoped)",
+        "operationId": "forceDeletePayrollByStore",
+        "parameters": [
+          { "$ref": "#/components/parameters/StoreParam" },
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Permanently deleted", "content": { "application/json": { "example": { "success": true, "message": "Payroll permanently deleted" } } } },
+          "400": { "description": "Force delete failed", "content": { "application/json": { "example": { "message": "Force delete failed" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+
+    "/payroll/senior/index": {
+      "get": {
+        "tags": ["Payroll (Senior Manager)"],
+        "summary": "List all payrolls across all stores",
+        "description": "Supports optional filtering by paymentStatus and date range.",
+        "operationId": "listAllPayrolls",
+        "parameters": [
+          { "in": "query", "name": "paymentStatus", "schema": { "type": "string", "enum": ["paid", "pending", "overdue", "failed"] } },
+          { "in": "query", "name": "start_date", "schema": { "type": "string", "format": "date" } },
+          { "in": "query", "name": "end_date", "schema": { "type": "string", "format": "date" } },
+          { "in": "query", "name": "per_page", "schema": { "type": "integer", "default": 10, "minimum": 1, "maximum": 100 } }
+        ],
+        "responses": {
+          "200": { "description": "All payrolls", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "type": "object" } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+
+    "/payroll/senior/show/{id}": {
+      "get": {
+        "tags": ["Payroll (Senior Manager)"],
+        "summary": "Get any payroll by ID (no store restriction)",
+        "operationId": "showAnyPayroll",
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+        "responses": {
+          "200": { "description": "Payroll found", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "$ref": "#/components/schemas/Payroll" } } } } } },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+
+    "/payroll/approve-senior-manager/{id}": {
+      "patch": {
+        "tags": ["Payroll (Senior Manager)"],
+        "summary": "Senior Manager: approve or reject a payroll entry",
+        "description": "If `action` is 'reject', a `comment` is required.",
+        "operationId": "approvePayrollSenior",
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["action"],
+                "properties": {
+                  "action": { "type": "string", "enum": ["approve", "reject"], "example": "approve" },
+                  "comment": { "type": "string", "maxLength": 1000, "description": "Required when action is 'reject'." }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Decision processed", "content": { "application/json": { "example": { "success": true, "message": "Senior Manager decision processed" } } } },
+          "400": { "description": "Business logic error – e.g. comment required on rejection", "content": { "application/json": { "example": { "message": "Comment is required when rejecting." } } } },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+
+    "/payroll/softdelete/{id}": {
+      "delete": {
+        "tags": ["Payroll (Senior Manager)"],
+        "summary": "Soft-delete any payroll (no store restriction)",
+        "operationId": "softDeleteAnyPayroll",
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+        "responses": {
+          "200": { "description": "Soft deleted", "content": { "application/json": { "example": { "success": true, "message": "Payroll soft deleted" } } } },
+          "400": { "description": "Delete failed", "content": { "application/json": { "example": { "message": "Delete failed" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+
+    "/payroll/restore/{id}": {
+      "patch": {
+        "tags": ["Payroll (Senior Manager)"],
+        "summary": "Restore any soft-deleted payroll",
+        "operationId": "restoreAnyPayroll",
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+        "responses": {
+          "200": { "description": "Restored", "content": { "application/json": { "example": { "success": true, "message": "Payroll restored" } } } },
+          "400": { "description": "Restore failed", "content": { "application/json": { "example": { "message": "Restore failed" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+
+    "/payroll/force/{id}": {
+      "delete": {
+        "tags": ["Payroll (Senior Manager)"],
+        "summary": "Permanently delete any payroll",
+        "operationId": "forceDeleteAnyPayroll",
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+        "responses": {
+          "200": { "description": "Permanently deleted", "content": { "application/json": { "example": { "success": true, "message": "Payroll permanently deleted" } } } },
+          "400": { "description": "Force delete failed", "content": { "application/json": { "example": { "message": "Force delete failed" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+
+    "/stores/{store}/schedule/generate": {
+      "post": {
+        "tags": ["Schedule AI"],
+        "summary": "Auto-generate next week's schedule for a store",
+        "description": "Creates a new MasterSchedule starting the next Tuesday after the latest existing schedule (or from today if no schedule exists). Generates individual Schedule records by matching employee availability, skills, and shift requirements. Scoring formula: `(skillScore × 0.5) + (performanceScore × 0.3) + (availabilityScore × 0.2) − (weeklyLoad × 3)`. Maximum 10 hours per employee per day. Also creates a linked TrackerSchedule record. Returns the master schedule and all assigned schedule entries.",
+        "operationId": "generateSchedule",
+        "parameters": [{ "$ref": "#/components/parameters/StoreParam" }],
+        "responses": {
+          "200": {
+            "description": "Schedule generated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "master_schedule": { "$ref": "#/components/schemas/MasterSchedule" },
+                        "schedules": {
+                          "type": "array",
+                          "items": { "$ref": "#/components/schemas/ScheduleEntry" }
+                        }
+                      }
+                    },
+                    "message": { "type": "string", "example": "Schedule generated successfully" }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "data": {
+                    "master_schedule": { "id": 1, "store_id": 1, "start_date": "2026-04-22", "end_date": "2026-04-28" },
+                    "schedules": [
+                      { "employee_id": 1, "date": "2026-04-22", "shift": "10:00:00-17:00:00", "score": 74.5 }
+                    ]
+                  },
+                  "message": "Schedule generated successfully"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Schedule generation failed – e.g. not enough employees, shift requirement misconfiguration",
+            "content": {
+              "application/json": {
+                "example": { "success": false, "message": "Not enough employees available for the Tuesday 10:00-17:00 shift." }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+
+    "/stores/{store}/schedule/suggestions": {
+      "post": {
+        "tags": ["Schedule AI"],
+        "summary": "Get scheduling suggestions without creating records",
+        "description": "Returns ranked employee candidates for each shift slot in the given date range. Does **not** create any records. Useful for previewing who would be assigned before committing.",
+        "operationId": "getScheduleSuggestions",
+        "parameters": [{ "$ref": "#/components/parameters/StoreParam" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["start_date", "end_date"],
+                "properties": {
+                  "start_date": { "type": "string", "format": "date", "example": "2026-04-21" },
+                  "end_date": { "type": "string", "format": "date", "example": "2026-04-27" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Suggestions returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "suggestions": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/ScheduleSuggestion" }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "suggestions": [
+                    {
+                      "day": "tuesday", "shift": "10:00:00-17:00:00",
+                      "suggestions": [
+                        { "employee_id": 1, "name": "Ahmad Updated Ali", "skill_score": 75, "shift": "10:00:00-17:00:00" },
+                        { "employee_id": 2, "name": "Ahmad Ali", "skill_score": 74.5, "shift": "10:00:00-17:00:00" }
+                      ]
+                    },
+                    {
+                      "day": "tuesday", "shift": "17:00:00-22:00:00",
+                      "suggestions": [
+                        { "employee_id": 1, "name": "Ahmad Updated Ali", "skill_score": 125, "shift": "17:00:00-22:00:00" }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error fetching suggestions",
+            "content": { "application/json": { "example": { "success": false, "message": "Error fetching suggestions: Store not found" } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
         }
       }
     }

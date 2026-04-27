@@ -24,7 +24,7 @@ class ApartmentRequest extends FormRequest
             'ApartmentRent.required' => 'The apartment rent is required.',
             'ApartmentRent.numeric' => 'The apartment rent must be a number.',
             'ApartmentRent.min' => 'The apartment rent must be at least 100.',
-            'ApartmentRent.max' => 'The apartment rent must not exceed 500.',
+            'ApartmentRent.max' => 'The apartment rent must not exceed 200.',
             'createdBy.required' => 'The createdBy field is required.',
             'createdBy.exists' => 'The specified creator must be a valid user.',
             'Location.unique' => 'The location must be unique.',

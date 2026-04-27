@@ -16,27 +16,98 @@ class ScheduleAIService
 {
     public function generate(int $storeId): array
     {
-        return DB::transaction(function () use ($storeId) {
+        // =========================
+        // 1. PREPARE DATES
+        // =========================
+        $latest = MasterSchedule::where('store_id', $storeId)
+            ->orderByDesc('end_date')
+            ->first();
 
-            // =========================
-            // 1. CREATE NEW MASTER SCHEDULE
-            // =========================
-            $latest = MasterSchedule::where('store_id', $storeId)
-                ->orderByDesc('end_date')
+        if ($latest) {
+            $start = Carbon::parse($latest->end_date)->addDay();
+        } else {
+            $start = Carbon::now();
+        }
+
+        if ($start->dayOfWeek !== Carbon::TUESDAY) {
+            $start = $start->next(Carbon::TUESDAY);
+        }
+
+        $end = (clone $start)->addDays(6);
+
+        // =========================
+        // 2. GENERATE SCHEDULES IN MEMORY
+        // =========================
+        $pendingSchedules = collect();
+        $errors = [];
+        $hasCriticalError = false;
+
+        $currentDate = clone $start;
+
+        while ($currentDate <= $end) {
+
+            $dayName = strtolower($currentDate->format('l'));
+
+            $day = ShiftRequirementDay::with('times')
+                ->where('store_id', $storeId)
+                ->where('day_of_week', $dayName)
                 ->first();
 
-            if ($latest) {
-                $start = Carbon::parse($latest->end_date)->addDay();
-            } else {
-                $start = Carbon::now();
+            if (!$day || $day->times->isEmpty()) {
+                $currentDate->addDay();
+                continue;
             }
 
-            // ✅ force Tuesday start
-            if ($start->dayOfWeek !== Carbon::TUESDAY) {
-                $start = $start->next(Carbon::TUESDAY);
+            foreach ($day->times as $requirement) {
+
+                $candidates = $this->getCandidates($storeId, $requirement, $currentDate, $pendingSchedules);
+
+                if ($candidates->count() < $requirement->required_employees) {
+                    $errors[] = [
+                        'day' => $dayName,
+                        'shift' => $requirement->start_time . '-' . $requirement->end_time,
+                        'required_employees' => $requirement->required_employees,
+                        'available_employees' => $candidates->count(),
+                        'message' => "Not enough employees available for this shift."
+                    ];
+                    $hasCriticalError = true;
+                    break 2; // إيقاف فوري
+                }
+
+                $selected = $candidates
+                    ->sortByDesc('score')
+                    ->take($requirement->required_employees);
+
+                foreach ($selected as $employee) {
+                    $pendingSchedules->push([
+                        'employee_id' => $employee->id,
+                        'date' => $currentDate->toDateString(),
+                        'start_time' => $requirement->start_time,
+                        'end_time' => $requirement->end_time,
+                        'skill_id' => $requirement->skill_id,
+                        'score' => $employee->score,
+                    ]);
+                }
             }
 
-            $end = (clone $start)->addDays(6);
+            $currentDate->addDay();
+        }
+
+        // =========================
+        // 3. التحقق من الأخطاء
+        // =========================
+        if ($hasCriticalError || $pendingSchedules->isEmpty()) {
+            return [
+                'success' => false,
+                'message' => 'Schedule generation failed due to insufficient employees for one or more shifts.',
+                'errors' => $errors,
+            ];
+        }
+
+        // =========================
+        // 4. الحفظ النهائي
+        // =========================
+        return DB::transaction(function () use ($storeId, $start, $end, $pendingSchedules) {
 
             $masterSchedule = MasterSchedule::create([
                 'store_id' => $storeId,
@@ -45,171 +116,142 @@ class ScheduleAIService
                 'created_by' => auth()->id(),
             ]);
 
-            // ✅ tracker
             TrackerSchedule::create([
                 'scheduleWeekId' => $masterSchedule->id,
             ]);
 
-            // =========================
-            // 2. GENERATE SCHEDULES
-            // =========================
             $results = [];
 
-            while ($start <= $end) {
+            foreach ($pendingSchedules as $scheduleData) {
+                Schedule::create([
+                    'employee_id' => $scheduleData['employee_id'],
+                    'schedule_week_id' => $masterSchedule->id,
+                    'date' => $scheduleData['date'],
+                    'start_time' => $scheduleData['start_time'],
+                    'end_time' => $scheduleData['end_time'],
+                    'skill_id' => $scheduleData['skill_id'],
+                ]);
 
-                $dayName = strtolower($start->format('l'));
-
-                $day = ShiftRequirementDay::with('times')
-                    ->where('store_id', $storeId)
-                    ->where('day_of_week', $dayName)
-                    ->first();
-
-                if (!$day || $day->times->isEmpty()) {
-                    $start->addDay();
-                    continue;
-                }
-
-                foreach ($day->times as $requirement) {
-
-                    $candidates = $this->getCandidates($storeId, $requirement, $start);
-
-                    if ($candidates->count() < $requirement->required_employees) {
-                        $results[] = [
-                            'day' => $dayName,
-                            'shift' => $requirement->start_time . '-' . $requirement->end_time,
-                            'message' => "Not enough employees available for this shift."
-                        ];
-                        continue;
-                    }
-
-                    $selected = $candidates
-                        ->sortByDesc('score')
-                        ->take($requirement->required_employees);
-
-                    foreach ($selected as $employee) {
-
-                        Schedule::create([
-                            'employee_id' => $employee->id,
-                            'schedule_week_id' => $masterSchedule->id, // ✅ FIXED
-                            'date' => $start->toDateString(),
-                            'start_time' => $requirement->start_time,
-                            'end_time' => $requirement->end_time,
-                            'skill_id' => $requirement->skill_id,
-                        ]);
-
-                        $results[] = [
-                            'employee_id' => $employee->id,
-                            'date' => $start->toDateString(),
-                            'shift' => $requirement->start_time . '-' . $requirement->end_time,
-                            'score' => $employee->score
-                        ];
-                    }
-                }
-
-                $start->addDay();
+                $results[] = [
+                    'employee_id' => $scheduleData['employee_id'],
+                    'date' => $scheduleData['date'],
+                    'shift' => $scheduleData['start_time'] . '-' . $scheduleData['end_time'],
+                    'score' => $scheduleData['score']
+                ];
             }
 
             return [
+                'success' => true,
                 'master_schedule' => $masterSchedule,
                 'schedules' => $results
             ];
         });
     }
-    private function getCandidates(int $storeId, $requirement, Carbon $date): Collection
-    {
-        // ✅ preload schedules for the day (avoid N+1 query issue)
-        $dailySchedules = Schedule::where('date', $date->toDateString())
-            ->get()
-            ->groupBy('employee_id');
 
-        // ✅ preload weekly schedules for fairness (prevent overloading employees with too many shifts)
-        $weeklySchedules = Schedule::whereBetween('date', [
-            now()->startOfWeek(),
-            now()->endOfWeek()
-        ])->get()->groupBy('employee_id');
+    private function getCandidates(int $storeId, $requirement, Carbon $date, ?Collection $pendingSchedules = null): Collection
+    {
+        $dateString = $date->toDateString();
+
+        $dbDailySchedules = Schedule::where('date', $dateString)->get()->toArray();
+        
+        if ($pendingSchedules) {
+            $memDailySchedules = $pendingSchedules->where('date', $dateString)->values()->toArray();
+            $dailySchedules = collect(array_merge($dbDailySchedules, $memDailySchedules))->groupBy('employee_id');
+        } else {
+            $dailySchedules = collect($dbDailySchedules)->groupBy('employee_id');
+        }
+
+        $weekStart = now()->startOfWeek()->toDateString();
+        $weekEnd = now()->endOfWeek()->toDateString();
+
+        $dbWeeklySchedules = Schedule::whereBetween('date', [$weekStart, $weekEnd])->get()->toArray();
+        
+        if ($pendingSchedules) {
+            $memWeeklySchedules = $pendingSchedules->whereBetween('date', [$weekStart, $weekEnd])->values()->toArray();
+            $weeklySchedules = collect(array_merge($dbWeeklySchedules, $memWeeklySchedules))->groupBy('employee_id');
+        } else {
+            $weeklySchedules = collect($dbWeeklySchedules)->groupBy('employee_id');
+        }
 
         $employees = Employee::where('store_id', $storeId)
-            ->where('status', 'hired') // Ensure the employee is hired
+            ->where('status', 'hired')
             ->whereHas('skills', function ($q) use ($requirement) {
-                $q->where('skill_id', $requirement->skill_id); // Match required skill
+                $q->where('skill_id', $requirement->skill_id);
             })
-            ->with([
-                'skills',
-                'availability.times'
-            ])
+            ->with(['skills', 'availability.times'])
             ->get();
 
-        return $employees->filter(function ($employee) use ($requirement, $date, $dailySchedules) {
+        // ✅ الإصلاح الجذري: تحويل أوقات الـ Shift إلى ثوانٍ رقمية لتجنب أخطاء المقارنة النصية
+        $reqStartTimestamp = strtotime($requirement->start_time);
+        $reqEndTimestamp = strtotime($requirement->end_time);
+        $shiftHours = ($reqEndTimestamp - $reqStartTimestamp) / 3600;
+
+        return $employees->filter(function ($employee) use ($date, $dailySchedules, $reqStartTimestamp, $reqEndTimestamp, $shiftHours) {
 
             $employeeSchedules = $dailySchedules[$employee->id] ?? collect();
 
-            // ✅ Check for consecutive shifts (10:00 AM - 5:00 PM followed by 5:00 PM - 10:00 PM)
-            $hasOverlap = $employeeSchedules->contains(function ($schedule) use ($requirement) {
-                return $schedule->start_time < $requirement->end_time &&
-                    $schedule->end_time > $requirement->start_time;
+            // ✅ التحقق من التداخل باستخدام الأرقام
+            $hasOverlap = $employeeSchedules->contains(function ($schedule) use ($reqStartTimestamp, $reqEndTimestamp) {
+                $scheduleStart = strtotime($schedule['start_time']);
+                $scheduleEnd = strtotime($schedule['end_time']);
+                
+                return $scheduleStart < $reqEndTimestamp && $scheduleEnd > $reqStartTimestamp;
             });
 
-            // Allow employee to work multiple consecutive shifts
-            $isConsecutiveShift = $employeeSchedules->some(function ($schedule) use ($requirement) {
-                return ($schedule->end_time === $requirement->start_time || $schedule->start_time === $requirement->end_time);
+            // ✅ التحقق من التوالي باستخدام الأرقام (لن يخطئ أبداً الآن)
+            $isConsecutiveShift = $employeeSchedules->some(function ($schedule) use ($reqStartTimestamp, $reqEndTimestamp) {
+                $scheduleStart = strtotime($schedule['start_time']);
+                $scheduleEnd = strtotime($schedule['end_time']);
+                
+                return $scheduleEnd === $reqStartTimestamp || $scheduleStart === $reqEndTimestamp;
             });
 
             if ($hasOverlap && !$isConsecutiveShift) {
-                return false; // Exclude employee if they have an overlap but it’s not a consecutive shift
+                return false; 
             }
 
-            // ✅ Max hours (10h/day check)
+            // ✅ حساب الساعات باستخدام الأرقام
             $totalHours = $employeeSchedules->sum(function ($s) {
-                return (strtotime($s->end_time) - strtotime($s->start_time)) / 3600;
+                return (strtotime($s['end_time']) - strtotime($s['start_time'])) / 3600;
             });
 
-            $shiftHours = (strtotime($requirement->end_time) - strtotime($requirement->start_time)) / 3600;
+            if (($totalHours + $shiftHours) > 15) return false; 
 
-            if (($totalHours + $shiftHours) > 10) return false; // If total hours for the day exceed 10 hours, exclude this employee
-
-            // ✅ Availability check (Is employee available for this shift?)
-            if (!$this->isAvailable($employee, $requirement, $date)) return false;
+            // ✅ تمرير الأرقام لدالة التوفر
+            if (!$this->isAvailable($employee, $reqStartTimestamp, $reqEndTimestamp, $date)) return false;
 
             return true;
 
-        })->map(function ($employee) use ($requirement, $weeklySchedules) {
-
-            $skillScore = $employee->skills
-                ->where('id', $requirement->skill_id)
-                ->first()?->pivot->rating ?? 0;
-
+        })->map(function ($employee) use ($requirement, $weeklySchedules, $dailySchedules) {
+            
+            $skillScore = $employee->skills->where('id', $requirement->skill_id)->first()?->pivot->rating ?? 0;
             $availabilityScore = 100;
             $performanceScore = 50;
-
-            // ✅ Fairness (weekly load)
             $weeklyLoad = count($weeklySchedules[$employee->id] ?? []);
+            $sameDayBonus = count($dailySchedules[$employee->id] ?? []) > 0 ? 50 : 0;
 
-            $employee->score =
-                ($skillScore * 0.5) +
-                ($performanceScore * 0.3) +
-                ($availabilityScore * 0.2)
-                - ($weeklyLoad * 3); // Penalize employees with heavy weekly loads
+            $employee->score = ($skillScore * 0.5) + ($performanceScore * 0.3) + ($availabilityScore * 0.2) - ($weeklyLoad * 3) + $sameDayBonus;
 
             return $employee;
         });
     }
 
-    private function isAvailable($employee, $requirement, Carbon $date): bool
+    // ✅ تحديث الدالة لتستقبل الأرقام (Timestamps) وتقارن بها
+    private function isAvailable($employee, int $reqStartTimestamp, int $reqEndTimestamp, Carbon $date): bool
     {
         $dayName = strtolower($date->format('l'));
 
         foreach ($employee->availability as $availability) {
-
             if ($availability->day_of_week !== $dayName) {
                 continue;
             }
 
             foreach ($availability->times as $time) {
-
-                if (
-                    $time->from <= $requirement->start_time &&
-                    $time->to >= $requirement->end_time
-                ) {
+                // ✅ تحويل أوقات التوفر إلى أرقام أيضاً
+                $availStart = strtotime($time->from);
+                $availEnd = strtotime($time->to);
+                
+                if ($availStart <= $reqStartTimestamp && $availEnd >= $reqEndTimestamp) {
                     return true;
                 }
             }
@@ -221,20 +263,16 @@ class ScheduleAIService
     public function getSuggestions(int $storeId, array $data): array
     {
         return DB::transaction(function () use ($storeId, $data) {
-
             $start = Carbon::parse($data['start_date']);
             $end = Carbon::parse($data['end_date']);
-
             $results = [];
+            
+            // ✅ مجموعة لتتبع الموظفين المقترحين في الذاكرة (نفس فكرة pendingSchedules)
+            $suggestedSchedules = collect();
 
             while ($start <= $end) {
-
                 $dayName = strtolower($start->format('l'));
-
-                $day = ShiftRequirementDay::with('times')
-                    ->where('store_id', $storeId)
-                    ->where('day_of_week', $dayName)
-                    ->first();
+                $day = ShiftRequirementDay::with('times')->where('store_id', $storeId)->where('day_of_week', $dayName)->first();
 
                 if (!$day || $day->times->isEmpty()) {
                     $start->addDay();
@@ -242,43 +280,625 @@ class ScheduleAIService
                 }
 
                 foreach ($day->times as $requirement) {
-
-                    $candidates = $this->getCandidates($storeId, $requirement, $start);
+                    
+                    // ✅ تمرير الـ suggestedSchedules ليكون النظام واعياً بالاقتراحات السابقة لنفس اليوم
+                    $candidates = $this->getCandidates($storeId, $requirement, $start, $suggestedSchedules);
 
                     if ($candidates->count() < $requirement->required_employees) {
                         $results[] = [
-                            'day' => $dayName,
-                            'shift' => $requirement->start_time . '-' . $requirement->end_time,
-                            'message' => "Not enough employees available for this shift."
+                            'day' => $dayName, 
+                            'shift' => $requirement->start_time . '-' . $requirement->end_time, 
+                            'required_employees' => $requirement->required_employees,
+                            'available_employees' => $candidates->count(),
+                            'message' => "Not enough employees available."
                         ];
                         continue;
                     }
 
-                    $suggestedEmployees = $candidates
-                        ->sortByDesc('score')
-                        ->take($requirement->required_employees)
-                        ->map(function ($employee) use ($requirement) {
-                            return [
-                                'employee_id' => $employee->id,
-                                'name' => $employee->FirstName . ' ' . $employee->LastName,
-                                'skill_score' => $employee->score,
-                                'shift' => $requirement->start_time . '-' . $requirement->end_time,
-                            ];
-                        });
+                    $selectedCandidates = $candidates->sortByDesc('score')->take($requirement->required_employees);
+                    
+                    $suggestedEmployees = $selectedCandidates->map(function ($employee) use ($requirement) {
+                        return [
+                            'employee_id' => $employee->id, 
+                            'name' => $employee->FirstName . ' ' . $employee->LastName, 
+                            'skill_score' => $employee->score, 
+                            'shift' => $requirement->start_time . '-' . $requirement->end_time
+                        ];
+                    });
+
+                    // ✅ إضافة الموظفين المختارين إلى الذاكرة لكي يتذكرهم في الـ Shift التالي
+                    foreach ($selectedCandidates as $employee) {
+                        $suggestedSchedules->push([
+                            'employee_id' => $employee->id,
+                            'date' => $start->toDateString(),
+                            'start_time' => $requirement->start_time,
+                            'end_time' => $requirement->end_time,
+                        ]);
+                    }
 
                     $results[] = [
-                        'day' => $dayName,
-                        'shift' => $requirement->start_time . '-' . $requirement->end_time,
+                        'day' => $dayName, 
+                        'shift' => $requirement->start_time . '-' . $requirement->end_time, 
                         'suggestions' => $suggestedEmployees
                     ];
                 }
-
                 $start->addDay();
             }
-
             return $results;
         });
     }
+}
+// class ScheduleAIService
+// {
+ 
+//     public function generate(int $storeId): array
+//     {
+//         // =========================
+//         // 1. PREPARE DATES (بدون إنشاء Master بعد)
+//         // =========================
+//         $latest = MasterSchedule::where('store_id', $storeId)
+//             ->orderByDesc('end_date')
+//             ->first();
+
+//         if ($latest) {
+//             $start = Carbon::parse($latest->end_date)->addDay();
+//         } else {
+//             $start = Carbon::now();
+//         }
+
+//         // ✅ force Tuesday start
+//         if ($start->dayOfWeek !== Carbon::TUESDAY) {
+//             $start = $start->next(Carbon::TUESDAY);
+//         }
+
+//         $end = (clone $start)->addDays(6);
+
+//         // =========================
+//         // 2. GENERATE SCHEDULES IN MEMORY أولاً
+//         // =========================
+//         $pendingSchedules = collect();
+//         $errors = [];
+
+//         $currentDate = clone $start;
+
+//         while ($currentDate <= $end) {
+
+//             $dayName = strtolower($currentDate->format('l'));
+
+//             $day = ShiftRequirementDay::with('times')
+//                 ->where('store_id', $storeId)
+//                 ->where('day_of_week', $dayName)
+//                 ->first();
+
+//             if (!$day || $day->times->isEmpty()) {
+//                 $currentDate->addDay();
+//                 continue;
+//             }
+
+//             foreach ($day->times as $requirement) {
+
+//                 $candidates = $this->getCandidates($storeId, $requirement, $currentDate);
+
+//                 if ($candidates->count() < $requirement->required_employees) {
+//                     $errors[] = [
+//                         'day' => $dayName,
+//                         'shift' => $requirement->start_time . '-' . $requirement->end_time,
+//                         'message' => "Not enough employees available for this shift."
+//                     ];
+//                     continue;
+//                 }
+
+//                 $selected = $candidates
+//                     ->sortByDesc('score')
+//                     ->take($requirement->required_employees);
+
+//                 foreach ($selected as $employee) {
+//                     $pendingSchedules->push([
+//                         'employee_id' => $employee->id,
+//                         'date' => $currentDate->toDateString(),
+//                         'start_time' => $requirement->start_time,
+//                         'end_time' => $requirement->end_time,
+//                         'skill_id' => $requirement->skill_id,
+//                         'score' => $employee->score,
+//                     ]);
+//                 }
+//             }
+
+//             $currentDate->addDay();
+//         }
+
+//         // =========================
+//         // 3. التحقق: هل توجد schedules؟
+//         // =========================
+//         if ($pendingSchedules->isEmpty()) {
+//             return [
+//                 'success' => false,
+//                 'message' => 'No schedules could be generated.',
+//                 'errors' => $errors,
+//             ];
+//         }
+
+//         // =========================
+//         // 4. إنشاء Master & Tracker وحفظ Schedules
+//         // =========================
+//         return DB::transaction(function () use ($storeId, $start, $end, $pendingSchedules, $errors) {
+
+//             $masterSchedule = MasterSchedule::create([
+//                 'store_id' => $storeId,
+//                 'start_date' => $start->toDateString(),
+//                 'end_date' => $end->toDateString(),
+//                 'created_by' => auth()->id(),
+//             ]);
+
+//             TrackerSchedule::create([
+//                 'scheduleWeekId' => $masterSchedule->id,
+//             ]);
+
+//             $results = [];
+
+//             foreach ($pendingSchedules as $scheduleData) {
+//                 Schedule::create([
+//                     'employee_id' => $scheduleData['employee_id'],
+//                     'schedule_week_id' => $masterSchedule->id,
+//                     'date' => $scheduleData['date'],
+//                     'start_time' => $scheduleData['start_time'],
+//                     'end_time' => $scheduleData['end_time'],
+//                     'skill_id' => $scheduleData['skill_id'],
+//                 ]);
+
+//                 $results[] = [
+//                     'employee_id' => $scheduleData['employee_id'],
+//                     'date' => $scheduleData['date'],
+//                     'shift' => $scheduleData['start_time'] . '-' . $scheduleData['end_time'],
+//                     'score' => $scheduleData['score']
+//                 ];
+//             }
+
+//             return [
+//                 'success' => true,
+//                 'master_schedule' => $masterSchedule,
+//                 'schedules' => $results,
+//                 'errors' => $errors,
+//             ];
+//         });
+//     }
+
+//     private function getCandidates(int $storeId, $requirement, Carbon $date): Collection
+//     {
+//         // ✅ preload schedules for the day (avoid N+1 query issue)
+//         $dailySchedules = Schedule::where('date', $date->toDateString())
+//             ->get()
+//             ->groupBy('employee_id');
+
+//         // ✅ preload weekly schedules for fairness (prevent overloading employees with too many shifts)
+//         $weeklySchedules = Schedule::whereBetween('date', [
+//             now()->startOfWeek(),
+//             now()->endOfWeek()
+//         ])->get()->groupBy('employee_id');
+
+//         $employees = Employee::where('store_id', $storeId)
+//             ->where('status', 'hired') // Ensure the employee is hired
+//             ->whereHas('skills', function ($q) use ($requirement) {
+//                 $q->where('skill_id', $requirement->skill_id); // Match required skill
+//             })
+//             ->with([
+//                 'skills',
+//                 'availability.times'
+//             ])
+//             ->get();
+
+//         return $employees->filter(function ($employee) use ($requirement, $date, $dailySchedules) {
+
+//             $employeeSchedules = $dailySchedules[$employee->id] ?? collect();
+
+//             // ✅ Check for consecutive shifts (10:00 AM - 5:00 PM followed by 5:00 PM - 10:00 PM)
+//             $hasOverlap = $employeeSchedules->contains(function ($schedule) use ($requirement) {
+//                 return $schedule->start_time < $requirement->end_time &&
+//                     $schedule->end_time > $requirement->start_time;
+//             });
+
+//             // Allow employee to work multiple consecutive shifts
+//             $isConsecutiveShift = $employeeSchedules->some(function ($schedule) use ($requirement) {
+//                 return ($schedule->end_time === $requirement->start_time || $schedule->start_time === $requirement->end_time);
+//             });
+
+//             if ($hasOverlap && !$isConsecutiveShift) {
+//                 return false; // Exclude employee if they have an overlap but it's not a consecutive shift
+//             }
+
+//             // ✅ Max hours (16h/day check)
+//             $totalHours = $employeeSchedules->sum(function ($s) {
+//                 return (strtotime($s->end_time) - strtotime($s->start_time)) / 3600;
+//             });
+
+//             $shiftHours = (strtotime($requirement->end_time) - strtotime($requirement->start_time)) / 3600;
+
+//             if (($totalHours + $shiftHours) > 16) return false; // If total hours for the day exceed 16 hours, exclude this employee
+
+//             // ✅ Availability check (Is employee available for this shift?)
+//             if (!$this->isAvailable($employee, $requirement, $date)) return false;
+
+//             return true;
+
+//         })->map(function ($employee) use ($requirement, $weeklySchedules) {
+
+//             $skillScore = $employee->skills
+//                 ->where('id', $requirement->skill_id)
+//                 ->first()?->pivot->rating ?? 0;
+
+//             $availabilityScore = 100;
+//             $performanceScore = 50;
+
+//             // ✅ Fairness (weekly load)
+//             $weeklyLoad = count($weeklySchedules[$employee->id] ?? []);
+
+//             $employee->score =
+//                 ($skillScore * 0.5) +
+//                 ($performanceScore * 0.3) +
+//                 ($availabilityScore * 0.2)
+//                 - ($weeklyLoad * 3); // Penalize employees with heavy weekly loads
+
+//             return $employee;
+//         });
+//     }
+
+//     private function isAvailable($employee, $requirement, Carbon $date): bool
+//     {
+//         $dayName = strtolower($date->format('l'));
+
+//         foreach ($employee->availability as $availability) {
+
+//             if ($availability->day_of_week !== $dayName) {
+//                 continue;
+//             }
+
+//             foreach ($availability->times as $time) {
+
+//                 if (
+//                     $time->from <= $requirement->start_time &&
+//                     $time->to >= $requirement->end_time
+//                 ) {
+//                     return true;
+//                 }
+//             }
+//         }
+
+//         return false;
+//     }
+
+//     public function getSuggestions(int $storeId, array $data): array
+//     {
+//         return DB::transaction(function () use ($storeId, $data) {
+
+//             $start = Carbon::parse($data['start_date']);
+//             $end = Carbon::parse($data['end_date']);
+
+//             $results = [];
+
+//             while ($start <= $end) {
+
+//                 $dayName = strtolower($start->format('l'));
+
+//                 $day = ShiftRequirementDay::with('times')
+//                     ->where('store_id', $storeId)
+//                     ->where('day_of_week', $dayName)
+//                     ->first();
+
+//                 if (!$day || $day->times->isEmpty()) {
+//                     $start->addDay();
+//                     continue;
+//                 }
+
+//                 foreach ($day->times as $requirement) {
+
+//                     $candidates = $this->getCandidates($storeId, $requirement, $start);
+
+//                     if ($candidates->count() < $requirement->required_employees) {
+//                         $results[] = [
+//                             'day' => $dayName,
+//                             'shift' => $requirement->start_time . '-' . $requirement->end_time,
+//                             'message' => "Not enough employees available for this shift."
+//                         ];
+//                         continue;
+//                     }
+
+//                     $suggestedEmployees = $candidates
+//                         ->sortByDesc('score')
+//                         ->take($requirement->required_employees)
+//                         ->map(function ($employee) use ($requirement) {
+//                             return [
+//                                 'employee_id' => $employee->id,
+//                                 'name' => $employee->FirstName . ' ' . $employee->LastName,
+//                                 'skill_score' => $employee->score,
+//                                 'shift' => $requirement->start_time . '-' . $requirement->end_time,
+//                             ];
+//                         });
+
+//                     $results[] = [
+//                         'day' => $dayName,
+//                         'shift' => $requirement->start_time . '-' . $requirement->end_time,
+//                         'suggestions' => $suggestedEmployees
+//                     ];
+//                 }
+
+//                 $start->addDay();
+//             }
+
+//             return $results;
+//         });
+//     }
+// }
+   
+
+  
+    // public function generate(int $storeId): array
+    // {
+    //     return DB::transaction(function () use ($storeId) {
+
+    //         // =========================
+    //         // 1. CREATE NEW MASTER SCHEDULE
+    //         // =========================
+    //         $latest = MasterSchedule::where('store_id', $storeId)
+    //             ->orderByDesc('end_date')
+    //             ->first();
+
+    //         if ($latest) {
+    //             $start = Carbon::parse($latest->end_date)->addDay();
+    //         } else {
+    //             $start = Carbon::now();
+    //         }
+
+    //         // ✅ force Tuesday start
+    //         if ($start->dayOfWeek !== Carbon::TUESDAY) {
+    //             $start = $start->next(Carbon::TUESDAY);
+    //         }
+
+    //         $end = (clone $start)->addDays(6);
+
+    //         $masterSchedule = MasterSchedule::create([
+    //             'store_id' => $storeId,
+    //             'start_date' => $start->toDateString(),
+    //             'end_date' => $end->toDateString(),
+    //             'created_by' => auth()->id(),
+    //         ]);
+
+    //         // ✅ tracker
+    //         TrackerSchedule::create([
+    //             'scheduleWeekId' => $masterSchedule->id,
+    //         ]);
+
+    //         // =========================
+    //         // 2. GENERATE SCHEDULES
+    //         // =========================
+    //         $results = [];
+
+    //         while ($start <= $end) {
+
+    //             $dayName = strtolower($start->format('l'));
+
+    //             $day = ShiftRequirementDay::with('times')
+    //                 ->where('store_id', $storeId)
+    //                 ->where('day_of_week', $dayName)
+    //                 ->first();
+
+    //             if (!$day || $day->times->isEmpty()) {
+    //                 $start->addDay();
+    //                 continue;
+    //             }
+
+    //             foreach ($day->times as $requirement) {
+
+    //                 $candidates = $this->getCandidates($storeId, $requirement, $start);
+
+    //                 if ($candidates->count() < $requirement->required_employees) {
+    //                     $results[] = [
+    //                         'day' => $dayName,
+    //                         'shift' => $requirement->start_time . '-' . $requirement->end_time,
+    //                         'message' => "Not enough employees available for this shift."
+    //                     ];
+    //                     return [
+    //                         'message' => "Schedule generated with warnings",
+    //                      ];
+    //                     continue;
+    //                 }
+
+    //                 $selected = $candidates
+    //                     ->sortByDesc('score')
+    //                     ->take($requirement->required_employees);
+
+    //                 foreach ($selected as $employee) {
+
+    //                     Schedule::create([
+    //                         'employee_id' => $employee->id,
+    //                         'schedule_week_id' => $masterSchedule->id, // ✅ FIXED
+    //                         'date' => $start->toDateString(),
+    //                         'start_time' => $requirement->start_time,
+    //                         'end_time' => $requirement->end_time,
+    //                         'skill_id' => $requirement->skill_id,
+    //                     ]);
+
+    //                     $results[] = [
+    //                         'employee_id' => $employee->id,
+    //                         'date' => $start->toDateString(),
+    //                         'shift' => $requirement->start_time . '-' . $requirement->end_time,
+    //                         'score' => $employee->score
+    //                     ];
+    //                 }
+    //             }
+
+    //             $start->addDay();
+    //         }
+
+    //         return [
+    //             'master_schedule' => $masterSchedule,
+    //             'schedules' => $results
+    //         ];
+    //     });
+    // }
+    // private function getCandidates(int $storeId, $requirement, Carbon $date): Collection
+    // {
+    //     // ✅ preload schedules for the day (avoid N+1 query issue)
+    //     $dailySchedules = Schedule::where('date', $date->toDateString())
+    //         ->get()
+    //         ->groupBy('employee_id');
+
+    //     // ✅ preload weekly schedules for fairness (prevent overloading employees with too many shifts)
+    //     $weeklySchedules = Schedule::whereBetween('date', [
+    //         now()->startOfWeek(),
+    //         now()->endOfWeek()
+    //     ])->get()->groupBy('employee_id');
+
+    //     $employees = Employee::where('store_id', $storeId)
+    //         ->where('status', 'hired') // Ensure the employee is hired
+    //         ->whereHas('skills', function ($q) use ($requirement) {
+    //             $q->where('skill_id', $requirement->skill_id); // Match required skill
+    //         })
+    //         ->with([
+    //             'skills',
+    //             'availability.times'
+    //         ])
+    //         ->get();
+
+    //     return $employees->filter(function ($employee) use ($requirement, $date, $dailySchedules) {
+
+    //         $employeeSchedules = $dailySchedules[$employee->id] ?? collect();
+
+    //         // ✅ Check for consecutive shifts (10:00 AM - 5:00 PM followed by 5:00 PM - 10:00 PM)
+    //         $hasOverlap = $employeeSchedules->contains(function ($schedule) use ($requirement) {
+    //             return $schedule->start_time < $requirement->end_time &&
+    //                 $schedule->end_time > $requirement->start_time;
+    //         });
+
+    //         // Allow employee to work multiple consecutive shifts
+    //         $isConsecutiveShift = $employeeSchedules->some(function ($schedule) use ($requirement) {
+    //             return ($schedule->end_time === $requirement->start_time || $schedule->start_time === $requirement->end_time);
+    //         });
+
+    //         if ($hasOverlap && !$isConsecutiveShift) {
+    //             return false; // Exclude employee if they have an overlap but it’s not a consecutive shift
+    //         }
+
+    //         // ✅ Max hours (10h/day check)
+    //         $totalHours = $employeeSchedules->sum(function ($s) {
+    //             return (strtotime($s->end_time) - strtotime($s->start_time)) / 3600;
+    //         });
+
+    //         $shiftHours = (strtotime($requirement->end_time) - strtotime($requirement->start_time)) / 3600;
+
+    //         if (($totalHours + $shiftHours) > 16) return false; // If total hours for the day exceed 10 hours, exclude this employee
+
+    //         // ✅ Availability check (Is employee available for this shift?)
+    //         if (!$this->isAvailable($employee, $requirement, $date)) return false;
+
+    //         return true;
+
+    //     })->map(function ($employee) use ($requirement, $weeklySchedules) {
+
+    //         $skillScore = $employee->skills
+    //             ->where('id', $requirement->skill_id)
+    //             ->first()?->pivot->rating ?? 0;
+
+    //         $availabilityScore = 100;
+    //         $performanceScore = 50;
+
+    //         // ✅ Fairness (weekly load)
+    //         $weeklyLoad = count($weeklySchedules[$employee->id] ?? []);
+
+    //         $employee->score =
+    //             ($skillScore * 0.5) +
+    //             ($performanceScore * 0.3) +
+    //             ($availabilityScore * 0.2)
+    //             - ($weeklyLoad * 3); // Penalize employees with heavy weekly loads
+
+    //         return $employee;
+    //     });
+    // }
+
+    // private function isAvailable($employee, $requirement, Carbon $date): bool
+    // {
+    //     $dayName = strtolower($date->format('l'));
+
+    //     foreach ($employee->availability as $availability) {
+
+    //         if ($availability->day_of_week !== $dayName) {
+    //             continue;
+    //         }
+
+    //         foreach ($availability->times as $time) {
+
+    //             if (
+    //                 $time->from <= $requirement->start_time &&
+    //                 $time->to >= $requirement->end_time
+    //             ) {
+    //                 return true;
+    //             }
+    //         }
+    //     }
+
+    //     return false;
+    // }
+
+    // public function getSuggestions(int $storeId, array $data): array
+    // {
+    //     return DB::transaction(function () use ($storeId, $data) {
+
+    //         $start = Carbon::parse($data['start_date']);
+    //         $end = Carbon::parse($data['end_date']);
+
+    //         $results = [];
+
+    //         while ($start <= $end) {
+
+    //             $dayName = strtolower($start->format('l'));
+
+    //             $day = ShiftRequirementDay::with('times')
+    //                 ->where('store_id', $storeId)
+    //                 ->where('day_of_week', $dayName)
+    //                 ->first();
+
+    //             if (!$day || $day->times->isEmpty()) {
+    //                 $start->addDay();
+    //                 continue;
+    //             }
+
+    //             foreach ($day->times as $requirement) {
+
+    //                 $candidates = $this->getCandidates($storeId, $requirement, $start);
+
+    //                 if ($candidates->count() < $requirement->required_employees) {
+    //                     $results[] = [
+    //                         'day' => $dayName,
+    //                         'shift' => $requirement->start_time . '-' . $requirement->end_time,
+    //                         'message' => "Not enough employees available for this shift."
+    //                     ];
+    //                     continue;
+    //                 }
+
+    //                 $suggestedEmployees = $candidates
+    //                     ->sortByDesc('score')
+    //                     ->take($requirement->required_employees)
+    //                     ->map(function ($employee) use ($requirement) {
+    //                         return [
+    //                             'employee_id' => $employee->id,
+    //                             'name' => $employee->FirstName . ' ' . $employee->LastName,
+    //                             'skill_score' => $employee->score,
+    //                             'shift' => $requirement->start_time . '-' . $requirement->end_time,
+    //                         ];
+    //                     });
+
+    //                 $results[] = [
+    //                     'day' => $dayName,
+    //                     'shift' => $requirement->start_time . '-' . $requirement->end_time,
+    //                     'suggestions' => $suggestedEmployees
+    //                 ];
+    //             }
+
+    //             $start->addDay();
+    //         }
+
+    //         return $results;
+    //     });
+    // }
 //     public function getSuggestions(int $storeId, array $data): array
 //     {
 //         return DB::transaction(function () use ($storeId, $data) {
@@ -584,4 +1204,3 @@ class ScheduleAIService
 
 //         return false;
 //     }
-} 
