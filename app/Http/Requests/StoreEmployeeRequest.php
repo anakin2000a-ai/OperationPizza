@@ -34,7 +34,7 @@ class StoreEmployeeRequest extends FormRequest
 
             'ApartmentId' => ['nullable', 'exists:apartments,id'],
             'SimId'       => ['nullable', 'exists:sims,id'],
-            'taxesId'     => ['nullable', 'exists:taxes,id'],
+            'taxesId'     => ['required', 'exists:taxes,id'],
         ];
     }
 }

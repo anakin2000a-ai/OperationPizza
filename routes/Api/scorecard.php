@@ -2,7 +2,7 @@
 use App\Http\Controllers\Api\ScoreCardController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('auth:sanctum',\App\Http\Middleware\CheckStoreAccess::class)->group(function () {
+Route::middleware('auth:sanctum', \App\Http\Middleware\CheckStoreAccess::class)->group(function () {
     Route::prefix('stores/{store}/score-cards')->group(function () {
         Route::post('/create', [ScoreCardController::class, 'create']);
         Route::get('/', [ScoreCardController::class, 'index']);
