@@ -2295,6 +2295,26 @@
                           "example": "14:10",
                           "description": "Optional. Actual clock-out time. Must be after actual_start_time if both provided."
                         },
+                         "respect": {
+                          "type": "boolean",
+                          "example": true
+                          
+                         },
+                           "uniforms": {
+                          "type": "boolean",
+                          "example": true
+                          
+                         },
+                          "commitmentToAttend": {
+                          "type": "boolean",
+                          "example": true
+                          
+                         } ,
+                          "performance": {
+                          "type": "boolean",
+                          "example": true
+                          
+                         } ,
                         "skill_id": { "type": "integer", "example": 2 }
                       }
                     }

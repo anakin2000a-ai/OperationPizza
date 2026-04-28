@@ -71,7 +71,7 @@ class ScheduleAIService
                         'message' => "Not enough employees available for this shift."
                     ];
                     $hasCriticalError = true;
-                    break 2; // إيقاف فوري
+                    break 2;  
                 }
 
                 $selected = $candidates
@@ -94,7 +94,7 @@ class ScheduleAIService
         }
 
         // =========================
-        // 3. التحقق من الأخطاء
+        // 3. Chcek with errors
         // =========================
         if ($hasCriticalError || $pendingSchedules->isEmpty()) {
             return [
@@ -105,7 +105,7 @@ class ScheduleAIService
         }
 
         // =========================
-        // 4. الحفظ النهائي
+        // 4. final save
         // =========================
         return DB::transaction(function () use ($storeId, $start, $end, $pendingSchedules) {
 
@@ -181,7 +181,7 @@ class ScheduleAIService
             ->with(['skills', 'availability.times'])
             ->get();
 
-        // ✅ الإصلاح الجذري: تحويل أوقات الـ Shift إلى ثوانٍ رقمية لتجنب أخطاء المقارنة النصية
+        // ✅ Root Fix: Convert Shift times to numerical seconds to avoid text comparison errors.
         $reqStartTimestamp = strtotime($requirement->start_time);
         $reqEndTimestamp = strtotime($requirement->end_time);
         $shiftHours = ($reqEndTimestamp - $reqStartTimestamp) / 3600;
@@ -190,16 +190,15 @@ class ScheduleAIService
 
             $employeeSchedules = $dailySchedules[$employee->id] ?? collect();
 
-            // ✅ التحقق من التداخل باستخدام الأرقام
-            $hasOverlap = $employeeSchedules->contains(function ($schedule) use ($reqStartTimestamp, $reqEndTimestamp) {
+            // ✅ Checking for Overlap Using Numbers            
+                $hasOverlap = $employeeSchedules->contains(function ($schedule) use ($reqStartTimestamp, $reqEndTimestamp) {
                 $scheduleStart = strtotime($schedule['start_time']);
                 $scheduleEnd = strtotime($schedule['end_time']);
                 
                 return $scheduleStart < $reqEndTimestamp && $scheduleEnd > $reqStartTimestamp;
             });
 
-            // ✅ التحقق من التوالي باستخدام الأرقام (لن يخطئ أبداً الآن)
-            $isConsecutiveShift = $employeeSchedules->some(function ($schedule) use ($reqStartTimestamp, $reqEndTimestamp) {
+             $isConsecutiveShift = $employeeSchedules->some(function ($schedule) use ($reqStartTimestamp, $reqEndTimestamp) {
                 $scheduleStart = strtotime($schedule['start_time']);
                 $scheduleEnd = strtotime($schedule['end_time']);
                 
@@ -210,14 +209,14 @@ class ScheduleAIService
                 return false; 
             }
 
-            // ✅ حساب الساعات باستخدام الأرقام
+            // ✅ Calculating Hours Using Numbers   
             $totalHours = $employeeSchedules->sum(function ($s) {
                 return (strtotime($s['end_time']) - strtotime($s['start_time'])) / 3600;
             });
 
             if (($totalHours + $shiftHours) > 15) return false; 
 
-            // ✅ تمرير الأرقام لدالة التوفر
+            // ✅ Passing numbers to the availability function
             if (!$this->isAvailable($employee, $reqStartTimestamp, $reqEndTimestamp, $date)) return false;
 
             return true;
@@ -236,7 +235,7 @@ class ScheduleAIService
         });
     }
 
-    // ✅ تحديث الدالة لتستقبل الأرقام (Timestamps) وتقارن بها
+    // ✅ Update the function to accept numbers (Timestamps) and compare using them.
     private function isAvailable($employee, int $reqStartTimestamp, int $reqEndTimestamp, Carbon $date): bool
     {
         $dayName = strtolower($date->format('l'));
@@ -247,7 +246,7 @@ class ScheduleAIService
             }
 
             foreach ($availability->times as $time) {
-                // ✅ تحويل أوقات التوفر إلى أرقام أيضاً
+                // ✅ Convert availability times to numbers as well.
                 $availStart = strtotime($time->from);
                 $availEnd = strtotime($time->to);
                 
@@ -267,7 +266,7 @@ class ScheduleAIService
             $end = Carbon::parse($data['end_date']);
             $results = [];
             
-            // ✅ مجموعة لتتبع الموظفين المقترحين في الذاكرة (نفس فكرة pendingSchedules)
+            // ✅ Set to track proposed employees in memory (same concept as pendingSchedules)
             $suggestedSchedules = collect();
 
             while ($start <= $end) {
@@ -281,7 +280,7 @@ class ScheduleAIService
 
                 foreach ($day->times as $requirement) {
                     
-                    // ✅ تمرير الـ suggestedSchedules ليكون النظام واعياً بالاقتراحات السابقة لنفس اليوم
+                   // ✅ Pass `suggestedSchedules` so the system is aware of previous suggestions for the same day.
                     $candidates = $this->getCandidates($storeId, $requirement, $start, $suggestedSchedules);
 
                     if ($candidates->count() < $requirement->required_employees) {
@@ -306,7 +305,7 @@ class ScheduleAIService
                         ];
                     });
 
-                    // ✅ إضافة الموظفين المختارين إلى الذاكرة لكي يتذكرهم في الـ Shift التالي
+                    // ✅ Add the selected employees to memory so they are remembered for the next shift.
                     foreach ($selectedCandidates as $employee) {
                         $suggestedSchedules->push([
                             'employee_id' => $employee->id,
