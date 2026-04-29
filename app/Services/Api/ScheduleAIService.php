@@ -2,6 +2,7 @@
  
 namespace App\Services\Api;
 
+use App\Models\DayOff;
 use App\Models\Employee;
 use App\Models\Schedule;
 use App\Models\ShiftRequirementDay;
@@ -187,7 +188,10 @@ class ScheduleAIService
         $shiftHours = ($reqEndTimestamp - $reqStartTimestamp) / 3600;
 
         return $employees->filter(function ($employee) use ($date, $dailySchedules, $reqStartTimestamp, $reqEndTimestamp, $shiftHours) {
-
+            // Skip the employee if they have an approved day off on this date
+            if ($this->hasApprovedDayOff($employee->id, $date)) {
+                return false;
+            }
             $employeeSchedules = $dailySchedules[$employee->id] ?? collect();
 
             // ✅ Checking for Overlap Using Numbers            
@@ -325,6 +329,17 @@ class ScheduleAIService
             }
             return $results;
         });
+    }
+    private function hasApprovedDayOff(int $employeeId, Carbon $date): bool
+    {
+        // Check if the employee has a day off on the given date with 'approved' status.
+        $dayOff = DayOff::where('employee_id', $employeeId)
+                        ->whereDate('date', $date->toDateString())
+                        ->where('acceptedStatus', 'approved')
+                        ->first();
+
+        // If there's an approved day off, return true, otherwise false.
+        return $dayOff !== null;
     }
 }
 // class ScheduleAIService
