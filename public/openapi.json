@@ -319,6 +319,30 @@
           "deleted_at": { "type": "string", "format": "date-time", "nullable": true }
         }
       },
+      "CleaningTask": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer", "example": 3 },
+        "name": { "type": "string", "example": "VCM Cleaning" },
+        "frequency": { "type": "string", "enum": ["daily", "weekly", "monthly"], "example": "daily" },
+        "times_per_frequency": { "type": "integer", "minimum": 1, "example": 2 },
+        "created_at": { "type": "string", "format": "date-time", "nullable": true, "example": "2026-04-30T15:43:02.000000Z" },
+        "updated_at": { "type": "string", "format": "date-time", "nullable": true, "example": "2026-04-30T15:43:02.000000Z" }
+      }
+    },
+    "TaskAssignment": {
+    "type": "object",
+    "properties": {
+      "id": { "type": "integer", "example": 3 },
+      "employee_id": { "type": "integer", "example": 2, "description": "References employees table." },
+      "cleaning_task_id": { "type": "integer", "example": 1, "description": "References cleaning_tasks table." },
+      "store_id": { "type": "integer", "example": 1, "description": "Automatically resolved from route store parameter." },
+      "assigned_at": { "type": "string", "format": "date", "example": "2022-05-01" },
+      "status": { "type": "string", "example": "assigned", "description": "Automatically set to 'assigned' on creation." },
+      "created_at": { "type": "string", "format": "date-time", "example": "2026-04-30T13:22:50.000000Z" },
+      "updated_at": { "type": "string", "format": "date-time", "example": "2026-04-30T13:22:50.000000Z" }
+    }
+  },
       "MasterSchedule": {
         "type": "object",
         "properties": {
@@ -541,7 +565,9 @@
     { "name": "Score Cards", "description": "Score card management scoped to a store. Requires CheckStoreAccess role." },
     { "name": "Payroll (Store Manager)", "description": "Store-scoped payroll management. Requires CheckStoreAccess role." },
     { "name": "Payroll (Senior Manager)", "description": "Global payroll management. Requires Senior Manager role." },
-    { "name": "Schedule AI", "description": "AI-powered schedule generation and suggestions. Requires CheckStoreAccess role." }
+    { "name": "Schedule AI", "description": "AI-powered schedule generation and suggestions. Requires CheckStoreAccess role." },
+    { "name": "Cleaning Tasks", "description": "Cleaning task CRUD management. Requires Senior Manager role." },
+    { "name": "Task Assignments", "description": "Cleaning task assignment management scoped to a store. Requires CheckStoreAccess role." }
   ],
   "paths": {
 
@@ -2943,7 +2969,85 @@
           "401": { "$ref": "#/components/responses/Unauthenticated" }
         }
       }
-    },
+    },"/stores/{store}/position-chart/{masterScheduleId}": {
+  "get": {
+    "tags": ["Master Schedules"],
+    "summary": "Generate Position Chart PDF",
+    "description": "Generates and downloads a PDF position chart for a specific master schedule week. The PDF contains a table grouped by day of the week, showing each employee's assigned skill, start time, and end time. The chart header displays the store name and the schedule's date range (e.g., Apr 14, 2026 - Apr 20, 2026). Returns a 404 if the master schedule has no associated schedule records.",
+    "operationId": "generatePositionChart",
+    "parameters": [
+      {
+        "$ref": "#/components/parameters/StoreParam"
+      },
+      {
+        "name": "masterScheduleId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "integer" },
+        "example": 5,
+        "description": "The ID of the master schedule to generate the chart for. Must exist in master_schedules table."
+      }
+    ],
+    "responses": {
+      "200": {
+        "description": "PDF generated successfully. Returns a binary PDF file.",
+        "content": {
+          "application/pdf": {
+            "schema": {
+              "type": "string",
+              "format": "binary"
+            }
+          }
+        },
+        "headers": {
+          "Content-Disposition": {
+            "description": "Attachment header with filename",
+            "schema": {
+              "type": "string",
+              "example": "attachment; filename=\"position_chart.pdf\""
+            }
+          }
+        }
+      },
+      "404": {
+        "description": "Master schedule not found or no schedules associated with it",
+        "content": {
+          "application/json": {
+            "examples": {
+              "notFound": {
+                "value": {
+                  "error": "Failed to generate Position Chart: No query results for model [App\\Models\\MasterSchedule] 5"
+                }
+              },
+              "noSchedules": {
+                "value": {
+                  "error": "Failed to generate Position Chart: No schedules found for this master schedule."
+                }
+              }
+            }
+          }
+        }
+      },
+      "500": {
+        "description": "Failed to generate PDF due to server error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "example": "Failed to generate Position Chart: Error generating Position Chart: ..."
+                }
+              }
+            }
+          }
+        }
+      },
+      "401": { "$ref": "#/components/responses/Unauthenticated" }
+    }
+  }
+},
 
     "/stores/{store}/schedule-templates/all": {
       "get": {
@@ -5110,7 +5214,649 @@
           "403": { "$ref": "#/components/responses/Forbidden" }
         }
       }
+    },
+    "/cleaning-tasks": {
+  "get": {
+    "tags": ["Cleaning Tasks"],
+    "summary": "List all cleaning tasks",
+    "description": "Returns all cleaning tasks. Requires Senior Manager role.",
+    "operationId": "listCleaningTasks",
+    "responses": {
+      "200": {
+        "description": "List of cleaning tasks",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/CleaningTask" }
+                }
+              }
+            },
+            "example": {
+              "data": [
+                { "id": 1, "name": "ss", "frequency": "monthly", "times_per_frequency": 2, "created_at": null, "updated_at": null },
+                { "id": 2, "name": "SsuceSdsq Cleaning", "frequency": "daily", "times_per_frequency": 2, "created_at": "2026-04-30T15:43:02.000000Z", "updated_at": "2026-04-30T15:43:02.000000Z" },
+                { "id": 3, "name": "VCM Cleaning", "frequency": "daily", "times_per_frequency": 2, "created_at": "2026-04-30T15:43:09.000000Z", "updated_at": "2026-04-30T15:43:09.000000Z" }
+              ]
+            }
+          }
+        }
+      },
+      "401": { "$ref": "#/components/responses/Unauthorized" },
+      "403": { "$ref": "#/components/responses/Forbidden" },
+      "500": { "$ref": "#/components/responses/InternalServerError" }
     }
+  },
+  "post": {
+    "tags": ["Cleaning Tasks"],
+    "summary": "Create a cleaning task",
+    "description": "Creates a new cleaning task. Name must be unique across all cleaning tasks. Frequency must be one of: daily, weekly, monthly. Requires Senior Manager role.",
+    "operationId": "createCleaningTask",
+    "requestBody": {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "required": ["name", "frequency", "times_per_frequency"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "maxLength": 255,
+                "example": "VCM Cleaning",
+                "description": "Required. Must be unique in cleaning_tasks table."
+              },
+              "frequency": {
+                "type": "string",
+                "enum": ["daily", "weekly", "monthly"],
+                "example": "daily",
+                "description": "Required. How often the task should be performed."
+              },
+              "times_per_frequency": {
+                "type": "integer",
+                "minimum": 1,
+                "example": 2,
+                "description": "Required. Number of times per frequency period. Must be at least 1."
+              }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "201": {
+        "description": "Task created successfully",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": { "type": "string", "example": "Task created successfully" },
+                "data": { "$ref": "#/components/schemas/CleaningTask" }
+              }
+            },
+            "example": {
+              "message": "Task created successfully",
+              "data": { "id": 3, "name": "VCM Cleaning", "frequency": "daily", "times_per_frequency": 2, "created_at": "2026-04-30T15:43:09.000000Z", "updated_at": "2026-04-30T15:43:09.000000Z" }
+            }
+          }
+        }
+      },
+      "422": {
+        "description": "Validation error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ValidationError" },
+            "example": {
+              "message": "The given data was invalid.",
+              "errors": {
+                "name": ["The name has already been taken."],
+                "frequency": ["The selected frequency is invalid."],
+                "times_per_frequency": ["The times per frequency must be at least 1."]
+              }
+            }
+          }
+        }
+      },
+      "401": { "$ref": "#/components/responses/Unauthorized" },
+      "403": { "$ref": "#/components/responses/Forbidden" },
+      "500": { "$ref": "#/components/responses/InternalServerError" }
+    }
+  }
+},
+
+"/cleaning-tasks/{id}": {
+  "get": {
+    "tags": ["Cleaning Tasks"],
+    "summary": "Get a cleaning task by ID",
+    "description": "Returns a single cleaning task. Requires Senior Manager role.",
+    "operationId": "showCleaningTask",
+    "parameters": [
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 1 }
+    ],
+    "responses": {
+      "200": {
+        "description": "Task found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "data": { "$ref": "#/components/schemas/CleaningTask" }
+              }
+            },
+            "example": {
+              "data": { "id": 1, "name": "VCM Cleaning", "frequency": "monthly", "times_per_frequency": 2, "created_at": "2026-04-30T15:43:02.000000Z", "updated_at": "2026-04-30T15:43:02.000000Z" }
+            }
+          }
+        }
+      },
+      "404": {
+        "description": "Task not found",
+        "content": {
+          "application/json": {
+            "example": { "error": "Error finding cleaning task: No query results for model [App\\Models\\CleaningTask] 999" }
+          }
+        }
+      },
+      "401": { "$ref": "#/components/responses/Unauthorized" },
+      "403": { "$ref": "#/components/responses/Forbidden" }
+    }
+  },
+  "delete": {
+    "tags": ["Cleaning Tasks"],
+    "summary": "Delete a cleaning task",
+    "description": "Permanently deletes a cleaning task by ID. Requires Senior Manager role.",
+    "operationId": "deleteCleaningTask",
+    "parameters": [
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 1 }
+    ],
+    "responses": {
+      "200": {
+        "description": "Task deleted successfully",
+        "content": {
+          "application/json": {
+            "example": { "message": "Task deleted successfully" }
+          }
+        }
+      },
+      "404": {
+        "description": "Task not found",
+        "content": {
+          "application/json": {
+            "example": { "error": "Error finding cleaning task: No query results for model [App\\Models\\CleaningTask] 999" }
+          }
+        }
+      },
+      "401": { "$ref": "#/components/responses/Unauthorized" },
+      "403": { "$ref": "#/components/responses/Forbidden" },
+      "500": { "$ref": "#/components/responses/InternalServerError" }
+    }
+  }
+},
+
+"/cleaning-tasks/{cleaning_task}": {
+  "put": {
+    "tags": ["Cleaning Tasks"],
+    "summary": "Update a cleaning task",
+    "description": "Updates an existing cleaning task. All fields are required. Name uniqueness check excludes the current task. Uses route model binding via `cleaning_task` parameter. Requires Senior Manager role.",
+    "operationId": "updateCleaningTask",
+    "parameters": [
+      { "name": "cleaning_task", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 3, "description": "Cleaning task ID (route model binding)." }
+    ],
+    "requestBody": {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "required": ["name", "frequency", "times_per_frequency"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "maxLength": 255,
+                "example": "LCM Cleaning",
+                "description": "Required. Must be unique, excluding the current task."
+              },
+              "frequency": {
+                "type": "string",
+                "enum": ["daily", "weekly", "monthly"],
+                "example": "monthly",
+                "description": "Required."
+              },
+              "times_per_frequency": {
+                "type": "integer",
+                "minimum": 1,
+                "example": 2,
+                "description": "Required. Must be at least 1."
+              }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "description": "Task updated successfully",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": { "type": "string", "example": "Task updated successfully" },
+                "data": { "$ref": "#/components/schemas/CleaningTask" }
+              }
+            },
+            "example": {
+              "message": "Task updated successfully",
+              "data": { "id": 3, "name": "LCM Cleaning", "frequency": "monthly", "times_per_frequency": 2, "created_at": "2026-04-30T15:43:09.000000Z", "updated_at": "2026-04-30T15:45:00.000000Z" }
+            }
+          }
+        }
+      },
+      "404": {
+        "description": "Task not found (route model binding failure)",
+        "content": {
+          "application/json": {
+            "example": { "message": "No query results for model [App\\Models\\CleaningTask] 999" }
+          }
+        }
+      },
+      "422": {
+        "description": "Validation error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ValidationError" },
+            "example": {
+              "message": "The given data was invalid.",
+              "errors": {
+                "name": ["The name has already been taken."],
+                "frequency": ["The selected frequency is invalid."]
+              }
+            }
+          }
+        }
+      },
+      "401": { "$ref": "#/components/responses/Unauthorized" },
+      "403": { "$ref": "#/components/responses/Forbidden" },
+      "500": { "$ref": "#/components/responses/InternalServerError" }
+    }
+  }
+},
+ "/stores/{store}/assign-task": {
+  "post": {
+    "tags": ["Task Assignments"],
+    "summary": "Assign a cleaning task to an employee",
+    "description": "Creates a new task assignment. The `store_id` is automatically resolved from the route parameter. The `status` is automatically set to 'assigned'. The combination of `employee_id` + `cleaning_task_id` must be unique. Requires CheckStoreAccess role.",
+    "operationId": "createTaskAssignment",
+    "parameters": [
+      { "$ref": "#/components/parameters/StoreParam" }
+    ],
+    "requestBody": {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "required": ["employee_id", "cleaning_task_id", "assigned_at"],
+            "properties": {
+              "employee_id": {
+                "type": "integer",
+                "example": 2,
+                "description": "Required. Must exist in employees table."
+              },
+              "cleaning_task_id": {
+                "type": "integer",
+                "example": 1,
+                "description": "Required. Must exist in cleaning_tasks table."
+              },
+              "assigned_at": {
+                "type": "string",
+                "format": "date",
+                "example": "2022-05-01",
+                "description": "Required. The date the task is assigned for."
+              }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "201": {
+        "description": "Task assigned successfully",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": { "type": "string", "example": "Task assigned successfully" },
+                "data": { "$ref": "#/components/schemas/TaskAssignment" }
+              }
+            },
+            "example": {
+              "message": "Task assigned successfully",
+              "data": {
+                "id": 6,
+                "employee_id": 2,
+                "cleaning_task_id": 1,
+                "store_id": 1,
+                "assigned_at": "2022-05-01",
+                "status": "assigned",
+                "created_at": "2026-04-30T14:00:00.000000Z",
+                "updated_at": "2026-04-30T14:00:00.000000Z"
+              }
+            }
+          }
+        }
+      },
+      "422": {
+        "description": "Validation error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ValidationError" },
+            "example": {
+              "message": "The given data was invalid.",
+              "errors": {
+                "employee_id": ["The selected employee_id is invalid.", "The combination of employee and cleaning task already exists."],
+                "cleaning_task_id": ["The selected cleaning_task_id is invalid.", "The combination of employee and cleaning task already exists."],
+                "assigned_at": ["The assigned at is not a valid date."]
+              }
+            }
+          }
+        }
+      },
+      "404": {
+        "description": "Store not found",
+        "content": {
+          "application/json": {
+            "example": { "message": "Store not found" }
+          }
+        }
+      },
+      "401": { "$ref": "#/components/responses/Unauthorized" },
+      "403": { "$ref": "#/components/responses/Forbidden" },
+      "500": { "$ref": "#/components/responses/InternalServerError" }
+    }
+  }
+},
+
+"/stores/{store}/task-assignments": {
+  "get": {
+    "tags": ["Task Assignments"],
+    "summary": "List task assignments for a store",
+    "description": "Returns task assignments for the specified store. Optionally filter by a specific date using the `date` query parameter (format: Y-m-d). If no date is provided, all assignments for the store are returned. Requires CheckStoreAccess role.",
+    "operationId": "getTaskAssignments",
+    "parameters": [
+      { "$ref": "#/components/parameters/StoreParam" },
+      {
+        "name": "date",
+        "in": "query",
+        "required": false,
+        "schema": { "type": "string", "format": "date", "example": "2022-05-01" },
+        "description": "Optional. Filter assignments by this date (Y-m-d format). Matches against the assigned_at column."
+      }
+    ],
+    "responses": {
+      "200": {
+        "description": "Task assignments fetched",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/TaskAssignment" }
+                }
+              }
+            },
+            "example": {
+              "data": [
+                { "id": 3, "employee_id": 1, "cleaning_task_id": 1, "store_id": 1, "assigned_at": "2022-05-01", "status": "assigned", "created_at": "2026-04-30T13:22:50.000000Z", "updated_at": "2026-04-30T13:22:50.000000Z" },
+                { "id": 4, "employee_id": 1, "cleaning_task_id": 1, "store_id": 1, "assigned_at": "2022-05-01", "status": "assigned", "created_at": "2026-04-30T13:22:51.000000Z", "updated_at": "2026-04-30T13:22:51.000000Z" },
+                { "id": 5, "employee_id": 1, "cleaning_task_id": 1, "store_id": 1, "assigned_at": "2022-05-01", "status": "assigned", "created_at": "2026-04-30T13:39:29.000000Z", "updated_at": "2026-04-30T13:39:29.000000Z" }
+              ]
+            }
+          }
+        }
+      },
+      "404": {
+        "description": "Store not found",
+        "content": {
+          "application/json": {
+            "example": { "message": "Store not found" }
+          }
+        }
+      },
+      "422": {
+        "description": "Invalid date format",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ValidationError" },
+            "example": {
+              "message": "The given data was invalid.",
+              "errors": { "date": ["The date does not match the format Y-m-d."] }
+            }
+          }
+        }
+      },
+      "401": { "$ref": "#/components/responses/Unauthorized" },
+      "403": { "$ref": "#/components/responses/Forbidden" },
+      "500": { "$ref": "#/components/responses/InternalServerError" }
+    }
+  }
+},
+
+"/stores/{store}/task-assignments/{id}": {
+  "put": {
+    "tags": ["Task Assignments"],
+    "summary": "Update a task assignment",
+    "description": "Updates an existing task assignment. All fields are optional (partial update). Note: the update is NOT scoped to the store — any valid task assignment ID can be updated. Requires CheckStoreAccess role.",
+    "operationId": "updateTaskAssignment",
+    "parameters": [
+      { "$ref": "#/components/parameters/StoreParam" },
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "integer" },
+        "example": 3,
+        "description": "The task assignment ID."
+      }
+    ],
+    "requestBody": {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "employee_id": {
+                "type": "integer",
+                "example": 2,
+                "description": "Optional. Must exist in employees table."
+              },
+              "cleaning_task_id": {
+                "type": "integer",
+                "example": 1,
+                "description": "Optional. Must exist in cleaning_tasks table."
+              },
+              "store_id": {
+                "type": "integer",
+                "example": 1,
+                "description": "Optional. Must exist in stores table."
+              },
+              "assigned_at": {
+                "type": "string",
+                "format": "date",
+                "example": "2022-05-02",
+                "description": "Optional."
+              }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "description": "Task assignment updated successfully",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": { "type": "string", "example": "Task assignment updated successfully" },
+                "data": { "$ref": "#/components/schemas/TaskAssignment" }
+              }
+            }
+          }
+        }
+      },
+      "404": {
+        "description": "Task assignment not found",
+        "content": {
+          "application/json": {
+            "example": { "error": "Failed to update task assignment: No query results for model [App\\Models\\TaskAssignment] 999" }
+          }
+        }
+      },
+      "422": {
+        "description": "Validation error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ValidationError" }
+          }
+        }
+      },
+      "401": { "$ref": "#/components/responses/Unauthorized" },
+      "403": { "$ref": "#/components/responses/Forbidden" },
+      "500": { "$ref": "#/components/responses/InternalServerError" }
+    }
+  },
+  "delete": {
+    "tags": ["Task Assignments"],
+    "summary": "Delete a task assignment",
+    "description": "Deletes a task assignment. The assignment must belong to the specified store; otherwise a 404 is returned. Requires CheckStoreAccess role.",
+    "operationId": "deleteTaskAssignment",
+    "parameters": [
+      { "$ref": "#/components/parameters/StoreParam" },
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "integer" },
+        "example": 2,
+        "description": "The task assignment ID."
+      }
+    ],
+    "responses": {
+      "200": {
+        "description": "Task assignment deleted successfully",
+        "content": {
+          "application/json": {
+            "example": { "message": "Task assignment deleted successfully" }
+          }
+        }
+      },
+      "404": {
+        "description": "Store not found or task assignment not found in this store",
+        "content": {
+          "application/json": {
+            "examples": {
+              "storeNotFound": { "value": { "message": "Store not found" } },
+              "assignmentNotFound": { "value": { "message": "Task assignment not found for this store" } }
+            }
+          }
+        }
+      },
+      "401": { "$ref": "#/components/responses/Unauthorized" },
+      "403": { "$ref": "#/components/responses/Forbidden" },
+      "500": { "$ref": "#/components/responses/InternalServerError" }
+    }
+  }
+},
+
+"/stores/{store}/export-task-assignments": {
+  "post": {
+    "tags": ["Task Assignments"],
+    "summary": "Export task assignments to PDF",
+    "description": "Generates and downloads a PDF report of cleaning task assignments for a specific store and date. The PDF contains a table with columns: Task Name, Employee, Assigned At, Status. The header displays 'Cleaning Task Assignments Report - {storeName}'. Returns 404 if no assignments are found for the given date. Requires CheckStoreAccess role.",
+    "operationId": "exportTaskAssignmentsToPDF",
+    "parameters": [
+      { "$ref": "#/components/parameters/StoreParam" }
+    ],
+    "requestBody": {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "required": ["date"],
+            "properties": {
+              "date": {
+                "type": "string",
+                "format": "date",
+                "example": "2022-05-01",
+                "description": "Required. The date to filter task assignments by."
+              }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "description": "PDF generated successfully. Returns a binary PDF file.",
+        "content": {
+          "application/pdf": {
+            "schema": {
+              "type": "string",
+              "format": "binary"
+            }
+          }
+        },
+        "headers": {
+          "Content-Disposition": {
+            "description": "Attachment header with filename",
+            "schema": {
+              "type": "string",
+              "example": "attachment; filename=\"task_assignments_report_2022-05-01.pdf\""
+            }
+          }
+        }
+      },
+      "404": {
+        "description": "No assignments found or store not found",
+        "content": {
+          "application/json": {
+            "examples": {
+              "storeNotFound": { "value": { "message": "Store not found" } },
+              "noAssignments": { "value": { "message": "No task assignments found for this store on this date" } }
+            }
+          }
+        }
+      },
+      "422": {
+        "description": "Validation error – invalid date format",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ValidationError" },
+            "example": {
+              "message": "The given data was invalid.",
+              "errors": { "date": ["The date is not a valid date."] }
+            }
+          }
+        }
+      },
+      "401": { "$ref": "#/components/responses/Unauthorized" },
+      "403": { "$ref": "#/components/responses/Forbidden" },
+      "500": { "$ref": "#/components/responses/InternalServerError" }
+    }
+  }
+}
 
   }
 }

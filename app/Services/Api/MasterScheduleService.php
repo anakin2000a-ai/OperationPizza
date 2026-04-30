@@ -595,45 +595,45 @@ class MasterScheduleService
  
    // In PositionChartService.php
     public function generatePositionChart($masterScheduleId)
-{
-    try {
-        Log::info('Processing Master Schedule ID: ' . $masterScheduleId);
+    {
+        try {
+            Log::info('Processing Master Schedule ID: ' . $masterScheduleId);
 
-        $masterSchedule = MasterSchedule::findOrFail($masterScheduleId);
-        $schedules = Schedule::where('schedule_week_id', $masterScheduleId)
-            ->with(['employee', 'skill'])
-            ->get();
+            $masterSchedule = MasterSchedule::findOrFail($masterScheduleId);
+            $schedules = Schedule::where('schedule_week_id', $masterScheduleId)
+                ->with(['employee', 'skill'])
+                ->get();
 
-        if ($schedules->isEmpty()) {
-            throw new Exception('No schedules found for this master schedule.');
+            if ($schedules->isEmpty()) {
+                throw new Exception('No schedules found for this master schedule.');
+            }
+
+            $positionData = $schedules->map(function ($schedule) {
+                return [
+                    'employee_name' => $schedule->employee->FirstName . ' ' . $schedule->employee->LastName,
+                    'start_time' => $schedule->start_time,
+                    'end_time' => $schedule->end_time,
+                    // Use Carbon::parse() to convert string to Carbon instance
+                    'date' => \Carbon\Carbon::parse($schedule->date)->format('l'),
+                    'skill_name' => $schedule->skill->name,
+                ];
+            });
+
+            Log::info('Position Data for PDF: ', $positionData->toArray());
+
+            $pdf = PDF::loadView('pdf.position_chart', [
+                'storeName' => $masterSchedule->store->store,
+                'positionData' => $positionData,
+                'masterSchedule' => $masterSchedule,
+            ]);
+
+            return $pdf;
+
+        } catch (Exception $e) {
+            Log::error('Error generating Position Chart: ' . $e->getMessage());
+            throw new Exception('Error generating Position Chart: ' . $e->getMessage());
         }
-
-        $positionData = $schedules->map(function ($schedule) {
-            return [
-                'employee_name' => $schedule->employee->FirstName . ' ' . $schedule->employee->LastName,
-                'start_time' => $schedule->start_time,
-                'end_time' => $schedule->end_time,
-                // Use Carbon::parse() to convert string to Carbon instance
-                'date' => \Carbon\Carbon::parse($schedule->date)->format('l'),
-                'skill_name' => $schedule->skill->name,
-            ];
-        });
-
-        Log::info('Position Data for PDF: ', $positionData->toArray());
-
-        $pdf = PDF::loadView('pdf.position_chart', [
-            'storeName' => $masterSchedule->store->store,
-            'positionData' => $positionData,
-            'masterSchedule' => $masterSchedule,
-        ]);
-
-        return $pdf;
-
-    } catch (Exception $e) {
-        Log::error('Error generating Position Chart: ' . $e->getMessage());
-        throw new Exception('Error generating Position Chart: ' . $e->getMessage());
     }
-}
     private function attachTrackersToSchedulesEmployees(MasterSchedule $master)
     {
         $trackerDetails = optional($master->trackerSchedule)->trackerDetails ?? collect();
