@@ -271,9 +271,10 @@ class ScoreCardService
 
         foreach ($schedules as $schedule) {
 
-            $start = Carbon::parse($schedule->date . ' ' . $schedule->actual_start_time);
-            $end = Carbon::parse($schedule->date . ' ' . $schedule->actual_end_time);
-
+            // $start = Carbon::parse($schedule->date . ' ' . $schedule->actual_start_time);
+            // $end = Carbon::parse($schedule->date . ' ' . $schedule->actual_end_time);
+            $start = $schedule->actual_start_time;
+            $end = $schedule->actual_end_time;
             if ($end <= $start) {
                 throw new \Exception("Invalid time range for schedule {$schedule->id}");
             }
