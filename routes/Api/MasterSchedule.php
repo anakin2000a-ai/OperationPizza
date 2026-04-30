@@ -34,6 +34,7 @@ Route::middleware('auth:sanctum',\App\Http\Middleware\CheckStoreAccess::class)->
 
 
         Route::post('master-schedules/copy', [MasterScheduleController::class, 'copyWeek']);//copy week's schedule
+        Route::get('position-chart/{masterScheduleId}', [MasterScheduleController::class, 'generatePositionChart']);
 
 
 

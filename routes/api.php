@@ -18,3 +18,7 @@ require __DIR__ . '/api/employees.php';
 require __DIR__ . '/api/scorecard.php';
 require __DIR__ . '/api/payroll.php';
 require __DIR__ . '/api/shiftrequirement.php';
+require __DIR__ . '/api/cleaningtasks.php';
+require __DIR__ . '/api/assign-task.php';
+require __DIR__ . '/api/assign-task-for-employee.php';
+ 

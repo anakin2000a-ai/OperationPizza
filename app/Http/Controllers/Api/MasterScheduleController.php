@@ -14,7 +14,9 @@ use Throwable;
 use App\Http\Requests\InitSchedulingRequest;
 use App\Http\Requests\CopyPreviousWeekRequest;
 use App\Models\Store;
+use Exception;
 use Illuminate\Support\Facades\Log;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class MasterScheduleController extends Controller
 {
@@ -354,4 +356,35 @@ class MasterScheduleController extends Controller
             ], 500);
         }
     }
+    // In the MasterScheduleController (controller that handles position chart generation)
+
+public function generatePositionChart(Request $request, $store, $masterScheduleId)
+{
+    try {
+        // 1. CLEAR ANY INVISIBLE WHITESPACE OR WARNINGS
+        if (ob_get_length()) {
+            ob_end_clean();
+        }
+
+        // 2. Generate the PDF
+        $pdf = $this->service->generatePositionChart($masterScheduleId);
+
+        // 3. Return the clean PDF
+        return $pdf->download('position_chart.pdf');
+        
+    } catch (\Exception $e) {
+        // Clear buffer even on error so JSON doesn't get corrupted
+        if (ob_get_length()) {
+            ob_end_clean();
+        }
+
+        \Log::error('Failed to generate Position Chart', [
+            'error' => $e->getMessage(),
+        ]);
+
+        return response()->json([
+            'error' => 'Failed to generate Position Chart: ' . $e->getMessage()
+        ], 500);
+    }
+}
 }

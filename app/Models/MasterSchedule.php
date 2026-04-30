@@ -13,6 +13,9 @@ class MasterSchedule extends Model
     protected $fillable = [
         'store_id','start_date','end_date','published','created_by','published_by'
     ];
+    protected $casts = [
+        'date' => 'date',  // ADD THIS
+    ];
 
     public function store()
     {

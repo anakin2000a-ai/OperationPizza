@@ -11,6 +11,10 @@ class Store extends Model
     {
         return $this->hasMany(Employee::class);
     }
+    public function taskAssignments()
+    {
+        return $this->hasMany(TaskAssignment::class);
+    }
 
  
     public function getRouteKeyName(): string
