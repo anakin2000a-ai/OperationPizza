@@ -113,7 +113,7 @@ class PayrollService
                 $loanDeduction = $finalSalary;
                 $finalSalary = 0;
             } else {
-                $finalSalary -= $loanDeduction;
+                $finalSalary -= $loanDeduction; 
             }
 
             // =======================

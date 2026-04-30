@@ -14,6 +14,14 @@ class Schedule extends Model
         'actual_start_time','actual_end_time',
         'skill_id','edited_by'
     ];
+     // Add this property
+    protected $casts = [
+        'date' => 'date',
+        'start_time' => 'datetime:H:i',
+        'end_time' => 'datetime:H:i',
+        'actual_start_time' => 'datetime:H:i',
+        'actual_end_time' => 'datetime:H:i',
+    ];
 
     public function employee()
     {
